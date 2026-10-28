@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEAK OF THE DEAD - Japanese Kana Speech Shooter</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for Retro Arcade & Japanese Vibe -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Press+Start+2P&family=Share+Tech+Mono&family=Kosugi+Maru&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Share Tech Mono', 'Kosugi Maru', monospace;
+      background-color: #08070c;
+      color: #e0e0e0;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .font-arcade {
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    .font-horror {
+      font-family: 'Creepster', cursive;
+    }
+
+    .font-jp {
+      font-family: 'Kosugi Maru', sans-serif;
+    }
+
+    /* CRT Scanline Effect Overlay */
+    .crt::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      z-index: 20;
+      background-size: 100% 4px, 6px 100%;
+      pointer-events: none;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #dc2626;
+      border-radius: 3px;
+    }
+
+    .neon-text-red {
+      text-shadow: 0 0 5px #ef4444, 0 0 15px #dc2626, 0 0 30px #991b1b;
+    }
+    .neon-box-red {
+      box-shadow: 0 0 10px rgba(220, 38, 38, 0.5), inset 0 0 10px rgba(220, 38, 38, 0.3);
+    }
+  </style>
+</head>
+<body class="h-screen w-screen relative crt overflow-hidden flex flex-col justify-between select-none">
+
+  <!-- TOP HUD HEADER -->
+  <header class="relative z-30 flex flex-wrap items-center justify-between p-4 bg-black/70 border-b border-red-900/60 backdrop-blur-sm">
+    <!-- Title / Logo -->
+    <div class="flex items-center space-x-3">
+      <h1 class="text-3xl sm:text-4xl font-horror text-red-600 tracking-wider neon-text-red">SPEAK OF THE DEAD</h1>
+      <span class="hidden sm:inline-block px-2 py-0.5 text-xs font-arcade bg-red-950 text-red-400 border border-red-700 rounded">KANA TRAINER</span>
+    </div>
+
+    <!-- Gameplay Stats Header -->
+    <div id="hud-stats" class="hidden flex items-center space-x-4 sm:space-x-6 font-arcade text-xs sm:text-sm">
+      <button type="button" onclick="toggleCheatSheet()" class="px-2 py-1 bg-purple-900 hover:bg-purple-800 text-purple-200 border border-purple-500 rounded text-[10px] transition-all">
+        📖 KANA CHART
+      </button>
+
+      <div class="flex flex-col items-center">
+        <span class="text-gray-400 text-[10px]">SCORE</span>
+        <span id="hud-score" class="text-yellow-400 text-base sm:text-lg">000000</span>
+      </div>
+
+      <div class="flex flex-col items-center">
+        <span class="text-gray-400 text-[10px]">COMBO</span>
+        <span id="hud-combo" class="text-green-400 text-base sm:text-lg">x1</span>
+      </div>
+
+      <!-- Health Bar -->
+      <div class="flex flex-col items-start w-32 sm:w-44">
+        <div class="flex justify-between w-full text-[10px] mb-1">
+          <span class="text-red-400">HEALTH</span>
+          <span id="hud-hp-val" class="text-red-400">100%</span>
+        </div>
+        <div class="w-full bg-red-950 border border-red-700 h-3.5 rounded-sm p-0.5">
+          <div id="hud-hp-bar" class="bg-gradient-to-r from-red-600 to-red-400 h-full w-full transition-all duration-300"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- GAME CANVAS CONTAINER -->
+  <main class="relative flex-1 w-full h-full overflow-hidden flex items-center justify-center">
+    <!-- Background Canvas for Arcade Visuals -->
+    <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block z-10"></canvas>
+
+    <!-- Muzzle Flash Overlay -->
+    <div id="muzzle-flash" class="absolute inset-0 bg-yellow-100/20 pointer-events-none opacity-0 z-20 transition-opacity duration-75"></div>
+
+    <!-- Blood Splatter Overlay when taking damage -->
+    <div id="damage-flash" class="absolute inset-0 bg-red-600/30 pointer-events-none opacity-0 z-20 transition-opacity duration-150"></div>
+
+    <!-- START / MAIN MENU OVERLAY -->
+    <div id="menu-overlay" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/85 p-6 backdrop-blur-md overflow-y-auto">
+      <div class="max-w-xl w-full text-center space-y-5 bg-zinc-950 border-2 border-red-800 p-6 sm:p-8 rounded-xl neon-box-red relative my-auto">
+        
+        <h2 class="text-5xl sm:text-6xl font-horror text-red-600 tracking-wider neon-text-red">SAY OR DIE!</h2>
+        <p class="text-gray-300 text-sm leading-relaxed">
+          The undead are advancing! <br/>
+          <strong class="text-red-400">Speak the Japanese Kana characters / words</strong> (or read the Romaji phonetic guides) into your mic to blast headshots!
+        </p>
+
+        <!-- Kana Mode Selector -->
+        <div class="bg-black/60 p-3 border border-zinc-800 rounded-lg text-left space-y-2">
+          <label class="text-xs text-yellow-400 font-arcade block">SELECT KANA TRAINER MODE:</label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <button type="button" id="btn-mode-h-basic" onclick="setKanaMode('H_BASIC')" class="py-2 px-1 font-arcade rounded bg-red-900 border border-red-500 text-white transition-all text-[11px]">ひらがな (SINGLE)</button>
+            <button type="button" id="btn-mode-h-words" onclick="setKanaMode('H_WORDS')" class="py-2 px-1 font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all text-[11px]">ひらがな (WORDS)</button>
+            <button type="button" id="btn-mode-k-basic" onclick="setKanaMode('K_BASIC')" class="py-2 px-1 font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all text-[11px]">カタカナ (SINGLE)</button>
+            <button type="button" id="btn-mode-k-words" onclick="setKanaMode('K_WORDS')" class="py-2 px-1 font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all text-[11px]">カタカナ (WORDS)</button>
+            <button type="button" id="btn-mode-mixed" onclick="setKanaMode('MIXED')" class="py-2 px-1 font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all text-[11px]">ALL-OUT MIXED</button>
+            <button type="button" id="btn-mode-yabai" onclick="setKanaMode('YABAI')" class="py-2 px-1 font-arcade rounded bg-yellow-950 border border-yellow-500 text-yellow-300 transition-all text-[11px] font-bold animate-pulse">😱 ヤバい MODE!</button>
+          </div>
+        </div>
+
+        <!-- Difficulty / Zombie Speed Selector -->
+        <div class="bg-black/60 p-3 border border-zinc-800 rounded-lg text-left space-y-2">
+          <label class="text-xs text-yellow-400 font-arcade block">ZOMBIE SPEED / DIFFICULTY:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" id="btn-diff-easy" onclick="setDifficulty('EASY')" class="py-2 text-xs font-arcade rounded bg-red-900 border border-red-500 text-white transition-all">CHILL / EASY</button>
+            <button type="button" id="btn-diff-normal" onclick="setDifficulty('NORMAL')" class="py-2 text-xs font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all">NORMAL</button>
+            <button type="button" id="btn-diff-hard" onclick="setDifficulty('HARD')" class="py-2 text-xs font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all">ARCADE</button>
+          </div>
+        </div>
+
+        <!-- Mic Status & Permission Notice -->
+        <div id="mic-status-box" class="p-3 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-3">
+            <div id="mic-dot" class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
+            <span id="mic-status-text" class="text-gray-300">Japanese Mic STT (ja-JP) Initializing</span>
+          </div>
+          <span id="stt-support-badge" class="px-2 py-0.5 rounded text-[10px] font-arcade bg-green-950 text-green-400 border border-green-700">ja-JP READY</span>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="space-y-3 pt-1">
+          <div class="flex gap-2">
+            <button id="btn-start" class="flex-1 py-4 text-xl font-arcade bg-red-700 hover:bg-red-600 active:bg-red-800 text-white font-bold rounded-lg transition-all transform hover:scale-[1.01] shadow-lg shadow-red-900/50 flex items-center justify-center space-x-2">
+              <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span>START GAME</span>
+            </button>
+            <button type="button" onclick="toggleCheatSheet()" class="px-4 py-4 font-arcade bg-purple-950 hover:bg-purple-900 border border-purple-600 text-purple-200 rounded-lg transition-all text-xs flex flex-col items-center justify-center">
+              <span>📖</span>
+              <span>CHART</span>
+            </button>
+          </div>
+          
+          <div class="flex items-center justify-center space-x-2">
+            <input type="checkbox" id="chk-keyboard-fallback" class="accent-red-600 w-4 h-4 rounded cursor-pointer">
+            <label for="chk-keyboard-fallback" class="text-xs text-gray-400 cursor-pointer">Enable Keyboard Fallback Bar (Type Romaji to Shoot)</label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- KANA CHEAT SHEET MODAL -->
+    <div id="cheatsheet-modal" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4 sm:p-6 backdrop-blur-md">
+      <div class="max-w-3xl w-full bg-zinc-950 border-2 border-purple-700 p-5 rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] space-y-4">
+        <div class="flex items-center justify-between border-b border-purple-900 pb-3">
+          <h3 class="text-xl font-arcade text-purple-400">JAPANESE KANA REFERENCE CHART</h3>
+          <button type="button" onclick="toggleCheatSheet()" class="text-gray-400 hover:text-white font-bold text-xl px-2">✕</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <!-- Hiragana Chart -->
+          <div class="bg-black/60 p-3 border border-purple-900/50 rounded-lg">
+            <h4 class="font-arcade text-red-400 mb-2">HIRAGANA (あいうえお)</h4>
+            <div class="grid grid-cols-5 gap-1.5 text-center font-jp">
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">あ</span><span class="text-[10px] text-gray-400">a</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">い</span><span class="text-[10px] text-gray-400">i</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">う</span><span class="text-[10px] text-gray-400">u</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">え</span><span class="text-[10px] text-gray-400">e</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">お</span><span class="text-[10px] text-gray-400">o</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">か</span><span class="text-[10px] text-gray-400">ka</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">き</span><span class="text-[10px] text-gray-400">ki</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">く</span><span class="text-[10px] text-gray-400">ku</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">け</span><span class="text-[10px] text-gray-400">ke</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">こ</span><span class="text-[10px] text-gray-400">ko</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">さ</span><span class="text-[10px] text-gray-400">sa</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">し</span><span class="text-[10px] text-gray-400">shi</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">す</span><span class="text-[10px] text-gray-400">su</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">せ</span><span class="text-[10px] text-gray-400">se</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">そ</span><span class="text-[10px] text-gray-400">so</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">た</span><span class="text-[10px] text-gray-400">ta</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">ち</span><span class="text-[10px] text-gray-400">chi</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">つ</span><span class="text-[10px] text-gray-400">tsu</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">て</span><span class="text-[10px] text-gray-400">te</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">と</span><span class="text-[10px] text-gray-400">to</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">な</span><span class="text-[10px] text-gray-400">na</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">に</span><span class="text-[10px] text-gray-400">ni</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">ぬ</span><span class="text-[10px] text-gray-400">nu</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">ね</span><span class="text-[10px] text-gray-400">ne</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-yellow-300 block">の</span><span class="text-[10px] text-gray-400">no</span></div>
+            </div>
+          </div>
+
+          <!-- Katakana Chart -->
+          <div class="bg-black/60 p-3 border border-purple-900/50 rounded-lg">
+            <h4 class="font-arcade text-purple-400 mb-2">KATAKANA (アイウエオ)</h4>
+            <div class="grid grid-cols-5 gap-1.5 text-center font-jp">
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ア</span><span class="text-[10px] text-gray-400">a</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">イ</span><span class="text-[10px] text-gray-400">i</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ウ</span><span class="text-[10px] text-gray-400">u</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">エ</span><span class="text-[10px] text-gray-400">e</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">オ</span><span class="text-[10px] text-gray-400">o</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">カ</span><span class="text-[10px] text-gray-400">ka</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">キ</span><span class="text-[10px] text-gray-400">ki</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ク</span><span class="text-[10px] text-gray-400">ku</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ケ</span><span class="text-[10px] text-gray-400">ke</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">コ</span><span class="text-[10px] text-gray-400">ko</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">サ</span><span class="text-[10px] text-gray-400">sa</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">シ</span><span class="text-[10px] text-gray-400">shi</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ス</span><span class="text-[10px] text-gray-400">su</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">セ</span><span class="text-[10px] text-gray-400">se</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ソ</span><span class="text-[10px] text-gray-400">so</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">タ</span><span class="text-[10px] text-gray-400">ta</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">チ</span><span class="text-[10px] text-gray-400">chi</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ツ</span><span class="text-[10px] text-gray-400">tsu</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">テ</span><span class="text-[10px] text-gray-400">te</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ト</span><span class="text-[10px] text-gray-400">to</span></div>
+
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ナ</span><span class="text-[10px] text-gray-400">na</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ニ</span><span class="text-[10px] text-gray-400">ni</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ヌ</span><span class="text-[10px] text-gray-400">nu</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ネ</span><span class="text-[10px] text-gray-400">ne</span></div>
+              <div class="p-1 bg-zinc-900 rounded"><span class="text-lg text-cyan-300 block">ノ</span><span class="text-[10px] text-gray-400">no</span></div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onclick="toggleCheatSheet()" class="w-full py-2 bg-purple-800 hover:bg-purple-700 font-arcade text-xs text-white rounded">
+          CLOSE CHART
+        </button>
+      </div>
+    </div>
+
+    <!-- GAME OVER OVERLAY -->
+    <div id="gameover-overlay" class="hidden absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 p-6 backdrop-blur-md">
+      <div class="max-w-lg w-full text-center space-y-6 bg-zinc-950 border-2 border-red-900 p-8 rounded-xl neon-box-red">
+        <h2 class="text-5xl font-horror text-red-600 tracking-widest neon-text-red">YOU DIED</h2>
+        <p class="text-xs font-arcade text-gray-400">THE ZOMBIES OVERRAN YOUR DEFENSES</p>
+
+        <!-- Stats Breakdown -->
+        <div class="space-y-3 bg-black/60 p-4 border border-zinc-800 rounded-lg text-left text-sm font-arcade">
+          <div class="flex justify-between border-b border-zinc-800 pb-2">
+            <span class="text-gray-400">FINAL SCORE:</span>
+            <span id="go-score" class="text-yellow-400">0</span>
+          </div>
+          <div class="flex justify-between border-b border-zinc-800 pb-2">
+            <span class="text-gray-400">KILLS:</span>
+            <span id="go-kills" class="text-red-400">0</span>
+          </div>
+          <div class="flex justify-between border-b border-zinc-800 pb-2">
+            <span class="text-gray-400">WORDS / MIN (WPM):</span>
+            <span id="go-wpm" class="text-blue-400">0</span>
+          </div>
+          <div class="flex justify-between border-b border-zinc-800 pb-2">
+            <span class="text-gray-400">MAX COMBO:</span>
+            <span id="go-combo" class="text-green-400">x0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">CRITICAL SHOUTS:</span>
+            <span id="go-shouts" class="text-purple-400">0</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 w-full">
+          <button id="btn-restart" class="flex-1 py-3.5 text-base sm:text-lg font-arcade bg-red-700 hover:bg-red-600 text-white font-bold rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-red-900/50">
+            PLAY AGAIN
+          </button>
+          <button id="btn-main-menu" class="flex-1 py-3.5 text-base sm:text-lg font-arcade bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-gray-200 font-bold rounded-lg transition-all">
+            MAIN MENU
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTTOM SPEECH & AUDIO FEEDBACK BAR -->
+  <footer class="relative z-30 p-3 sm:p-4 bg-zinc-950/90 border-t border-red-900/60 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3">
+    
+    <!-- Speech Recognition Visual Banner -->
+    <div class="flex-1 w-full bg-black/80 border border-zinc-800 rounded-lg p-2.5 flex items-center justify-between space-x-3">
+      <div class="flex items-center space-x-3 overflow-hidden">
+        <div id="mic-indicator-icon" class="relative flex items-center justify-center w-8 h-8 rounded-full bg-red-950 border border-red-700 text-red-500 shrink-0">
+          🎤
+          <div id="mic-ping" class="absolute inset-0 rounded-full bg-red-500/20 animate-ping opacity-0"></div>
+        </div>
+        
+        <div class="flex flex-col min-w-0">
+          <span class="text-[10px] text-gray-500 uppercase tracking-widest font-arcade">LIVE MICROPHONE SPEECH STREAM</span>
+          <div id="speech-transcript-display" class="text-sm font-semibold text-yellow-300 truncate tracking-wide italic">
+            Waiting for speech input...
+          </div>
+        </div>
+      </div>
+
+      <!-- Volume Level Meter Bar (for Shouting) -->
+      <div class="flex flex-col items-end shrink-0 w-24 sm:w-32">
+        <div class="flex justify-between w-full text-[9px] text-gray-400 font-arcade mb-0.5">
+          <span>VOL</span>
+          <span id="lbl-mic-vol" class="text-purple-400">0%</span>
+        </div>
+        <div class="w-full bg-zinc-900 border border-zinc-700 h-2 rounded overflow-hidden">
+          <div id="mic-volume-bar" class="bg-gradient-to-r from-blue-500 via-green-500 to-red-500 h-full w-0% transition-all duration-75"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Optional Keyboard Text Fallback Bar -->
+    <div id="keyboard-input-container" class="hidden w-full sm:w-auto flex items-center space-x-2">
+      <input type="text" id="type-shooter-input" placeholder="Type word here..." autocomplete="off" class="bg-zinc-900 border border-red-700 text-white text-sm px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-500 font-mono w-full sm:w-48">
+      <button id="btn-type-shoot" class="px-3 py-2 bg-red-800 text-xs font-arcade text-white rounded hover:bg-red-700">FIRE</button>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT GAME LOGIC -->
+  <script>
+    // --- AUDIO & SOUND SYNTHESIS ENGINE (Web Audio API) ---
+    class WebAudioSoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playGunshot(isCritical = false) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.15;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(isCritical ? 3000 : 1500, now);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(isCritical ? 1.0 : 0.6, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start(now);
+
+        const sub = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        sub.type = 'triangle';
+        sub.frequency.setValueAtTime(isCritical ? 220 : 150, now);
+        sub.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+
+        subGain.gain.setValueAtTime(0.8, now);
+        subGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+        sub.connect(subGain);
+        subGain.connect(this.ctx.destination);
+
+        sub.start(now);
+        sub.stop(now + 0.15);
+      }
+
+      playZombieGroan() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(60 + Math.random() * 30, now);
+        osc.frequency.linearRampToValueAtTime(45 + Math.random() * 20, now + 0.4);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.4);
+      }
+
+      playZombieDeath() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      playDamage() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(30, now + 0.3);
+
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+
+      playBossAlert() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        for (let i = 0; i < 3; i++) {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440 + i * 110, now + i * 0.1);
+
+          gain.gain.setValueAtTime(0.2, now + i * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.08);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now + i * 0.1);
+          osc.stop(now + i * 0.1 + 0.08);
+        }
+      }
+    }
+
+    const soundEngine = new WebAudioSoundEngine();
+
+    // --- DIFFICULTY CONFIGURATION ---
+    const DIFFICULTY_SETTINGS = {
+      EASY: { baseSpeed: 0.8, spawnInterval: 380 },
+      NORMAL: { baseSpeed: 1.2, spawnInterval: 280 },
+      HARD: { baseSpeed: 1.8, spawnInterval: 180 }
+    };
+    let currentDifficulty = 'EASY';
+
+    function setDifficulty(diff) {
+      currentDifficulty = diff;
+      const btns = {
+        'EASY': 'btn-diff-easy',
+        'NORMAL': 'btn-diff-normal',
+        'HARD': 'btn-diff-hard'
+      };
+      Object.keys(btns).forEach(d => {
+        const btn = document.getElementById(btns[d]);
+        if (!btn) return;
+        if (d === diff) {
+          btn.className = 'py-2 text-xs font-arcade rounded bg-red-900 border border-red-500 text-white transition-all scale-105';
+        } else {
+          btn.className = 'py-2 text-xs font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all opacity-70';
+        }
+      });
+    }
+
+    // --- MIC VOLUME ANALYZER (FOR SHOUTING CRITICAL HITS) ---
+    let micVolume = 0;
+    const SHOUT_THRESHOLD = 0.65;
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+
+    async function initMicVolumeAnalyzer() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        microphone = audioContext.createMediaStreamSource(stream);
+
+        analyser.fftSize = 256;
+        microphone.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        function checkVolume() {
+          if (!analyser) return;
+          analyser.getByteFrequencyData(dataArray);
+
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const average = sum / dataArray.length;
+          micVolume = Math.min(1.0, average / 128);
+
+          const volBar = document.getElementById('mic-volume-bar');
+          const volLbl = document.getElementById('lbl-mic-vol');
+          if (volBar && volLbl) {
+            const pct = Math.floor(micVolume * 100);
+            volBar.style.width = `${pct}%`;
+            volLbl.textContent = `${pct}%`;
+
+            if (micVolume >= SHOUT_THRESHOLD) {
+              volBar.className = 'bg-red-500 h-full w-full transition-all duration-75 animate-pulse';
+              volLbl.className = 'text-red-400 font-bold';
+            } else {
+              volBar.className = 'bg-gradient-to-r from-blue-500 via-green-500 to-red-500 h-full transition-all duration-75';
+              volLbl.className = 'text-purple-400';
+            }
+          }
+
+          requestAnimationFrame(checkVolume);
+        }
+
+        checkVolume();
+      } catch (err) {
+        console.warn('Microphone volume analyzer initialization failed:', err);
+      }
+    }
+
+    // --- SPEECH RECOGNITION VARS ---
+    let recognition = null;
+    let isSpeechActive = false;
+
+    // --- CANVAS VISUAL ENTITIES ---
+    class Zombie {
+      constructor(data, isBoss = false) {
+        this.kana = data.kana;
+        this.romaji = data.romaji;
+        this.isBoss = isBoss;
+
+        this.hp = isBoss ? 3 : 1;
+        this.maxHp = this.hp;
+
+        this.z = 1400;
+        this.x = (Math.random() - 0.5) * (canvas.width * 0.7);
+
+        const diffSpeed = DIFFICULTY_SETTINGS[currentDifficulty].baseSpeed;
+        this.speed = (0.7 + Math.random() * 0.5) * diffSpeed * (isBoss ? 0.6 : 1.0);
+
+        this.limbAngle = Math.random() * Math.PI;
+        this.bobOffset = Math.random() * Math.PI * 2;
+      }
+
+      update() {
+        const slowdown = targetSlowdownTimer > 0 ? 0.25 : 1.0;
+        this.z -= this.speed * slowdown;
+        this.limbAngle += 0.08 * slowdown;
+      }
+
+      draw() {
+        const horizonY = canvas.height * 0.35;
+        const barrierY = canvas.height - 20;
+
+        const perspective = 1 - Math.max(0, this.z) / 1400;
+        const scale = Math.max(0.15, perspective);
+
+        const screenY = horizonY + (barrierY - horizonY) * scale;
+        const centerX = canvas.width / 2;
+        const screenX = centerX + (this.x) * scale;
+
+        const size = (this.isBoss ? 160 : 100) * scale;
+
+        ctx.save();
+        ctx.translate(screenX, screenY);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size * 0.35, size * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const bobY = -Math.abs(Math.sin(this.limbAngle)) * 8 * scale;
+        ctx.translate(0, bobY);
+
+        ctx.fillStyle = this.isBoss ? '#4c1d95' : '#15803d';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2 * scale;
+
+        ctx.fillRect(-size * 0.2, -size * 0.7, size * 0.4, size * 0.5);
+        ctx.strokeRect(-size * 0.2, -size * 0.7, size * 0.4, size * 0.5);
+
+        ctx.fillStyle = this.isBoss ? '#6b21a8' : '#22c55e';
+        ctx.beginPath();
+        ctx.arc(0, -size * 0.85, size * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(-size * 0.08, -size * 0.88, size * 0.04, 0, Math.PI * 2);
+        ctx.arc(size * 0.08, -size * 0.88, size * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        const armSwing = Math.sin(this.limbAngle) * 12 * scale;
+        ctx.strokeStyle = this.isBoss ? '#6b21a8' : '#16a34a';
+        ctx.lineWidth = 4 * scale;
+
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.15, -size * 0.6);
+        ctx.lineTo(-size * 0.3, -size * 0.4 + armSwing);
+        ctx.moveTo(size * 0.15, -size * 0.6);
+        ctx.lineTo(size * 0.3, -size * 0.4 - armSwing);
+        ctx.stroke();
+
+        const tagY = -size * 1.15;
+        ctx.font = `bold ${Math.max(12, Math.floor(22 * scale))}px "Kosugi Maru", sans-serif`;
+        const kanaWidth = ctx.measureText(this.kana).width;
+
+        ctx.font = `bold ${Math.max(10, Math.floor(14 * scale))}px "Share Tech Mono", monospace`;
+        const romajiWidth = ctx.measureText(`(${this.romaji})`).width;
+
+        const tagWidth = Math.max(kanaWidth, romajiWidth) + 16 * scale;
+        const tagHeight = (this.kana.length > 2 ? 46 : 40) * scale;
+
+        ctx.fillStyle = targetSlowdownTimer > 0 ? 'rgba(8, 145, 178, 0.9)' : 'rgba(0, 0, 0, 0.85)';
+        ctx.strokeStyle = this.isBoss ? '#facc15' : (targetSlowdownTimer > 0 ? '#38bdf8' : '#dc2626');
+        ctx.lineWidth = (this.isBoss ? 3 : 1.5) * scale;
+
+        ctx.beginPath();
+        ctx.roundRect(-tagWidth / 2, tagY - tagHeight / 2, tagWidth, tagHeight, 6 * scale);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.font = `bold ${Math.max(12, Math.floor(20 * scale))}px "Kosugi Maru", sans-serif`;
+        ctx.fillStyle = this.isBoss ? '#fef08a' : '#ffffff';
+        ctx.fillText(this.kana, 0, tagY - 6 * scale);
+
+        ctx.font = `bold ${Math.max(9, Math.floor(13 * scale))}px "Share Tech Mono", monospace`;
+        ctx.fillStyle = '#facc15';
+        ctx.fillText(this.romaji, 0, tagY + 12 * scale);
+
+        ctx.restore();
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 8;
+        this.vy = (Math.random() - 0.5) * 8 - 2;
+        this.color = color;
+        this.alpha = 1.0;
+        this.size = Math.random() * 4 + 2;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 0.04;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class FloatingText {
+      constructor(text, x, y, color) {
+        this.text = text;
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.alpha = 1.0;
+      }
+
+      update() {
+        this.y -= 1.2;
+        this.alpha -= 0.02;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.font = 'bold 16px "Press Start 2P", monospace';
+        ctx.fillStyle = this.color;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+      }
+    }
+
+    function createBloodSplat(x, y, color = '#dc2626') {
+      for (let i = 0; i < 18; i++) {
+        particleEffects.push(new Particle(x, y, color));
+      }
+    }
+
+    function triggerMuzzleFlash() {
+      const flash = document.getElementById('muzzle-flash');
+      if (!flash) return;
+      flash.style.opacity = '1';
+      setTimeout(() => { flash.style.opacity = '0'; }, 60);
+    }
+
+    function triggerDamageFlash() {
+      const flash = document.getElementById('damage-flash');
+      if (!flash) return;
+      flash.style.opacity = '1';
+      setTimeout(() => { flash.style.opacity = '0'; }, 150);
+    }
+
+    function toggleCheatSheet() {
+      const modal = document.getElementById('cheatsheet-modal');
+      if (!modal) return;
+      modal.classList.toggle('hidden');
+    }
+
+    // --- JAPANESE KANA & WORD DICTIONARIES ---
+    const KANA_BANKS = {
+      H_BASIC: [
+        { kana: "あ", romaji: "a" }, { kana: "い", romaji: "i" }, { kana: "う", romaji: "u" }, { kana: "え", romaji: "e" }, { kana: "お", romaji: "o" },
+        { kana: "か", romaji: "ka" }, { kana: "き", romaji: "ki" }, { kana: "く", romaji: "ku" }, { kana: "け", romaji: "ke" }, { kana: "こ", romaji: "ko" },
+        { kana: "さ", romaji: "sa" }, { kana: "し", romaji: "shi" }, { kana: "す", romaji: "su" }, { kana: "せ", romaji: "se" }, { kana: "そ", romaji: "so" },
+        { kana: "た", romaji: "ta" }, { kana: "ち", romaji: "chi" }, { kana: "つ", romaji: "tsu" }, { kana: "て", romaji: "te" }, { kana: "と", romaji: "to" },
+        { kana: "な", romaji: "na" }, { kana: "に", romaji: "ni" }, { kana: "ぬ", romaji: "nu" }, { kana: "ね", romaji: "ne" }, { kana: "の", romaji: "no" }
+      ],
+      H_WORDS: [
+        { kana: "ねこ", romaji: "neko" }, { kana: "いぬ", romaji: "inu" }, { kana: "さくら", romaji: "sakura" },
+        { kana: "すし", romaji: "sushi" }, { kana: "みず", romaji: "mizu" }, { kana: "やま", romaji: "yama" },
+        { kana: "かわ", romaji: "kawa" }, { kana: "はな", romaji: "hana" }, { kana: "とり", romaji: "tori" },
+        { kana: "つき", romaji: "tsuki" }, { kana: "ほし", romaji: "hoshi" }, { kana: "きつね", romaji: "kitsune" }
+      ],
+      K_BASIC: [
+        { kana: "ア", romaji: "a" }, { kana: "イ", romaji: "i" }, { kana: "ウ", romaji: "u" }, { kana: "エ", romaji: "e" }, { kana: "オ", romaji: "o" },
+        { kana: "カ", romaji: "ka" }, { kana: "キ", romaji: "ki" }, { kana: "ク", romaji: "ku" }, { kana: "ケ", romaji: "ke" }, { kana: "コ", romaji: "ko" },
+        { kana: "サ", romaji: "sa" }, { kana: "シ", romaji: "shi" }, { kana: "ス", romaji: "su" }, { kana: "セ", romaji: "se" }, { kana: "ソ", romaji: "so" },
+        { kana: "タ", romaji: "ta" }, { kana: "チ", romaji: "chi" }, { kana: "ツ", romaji: "tsu" }, { kana: "テ", romaji: "te" }, { kana: "ト", romaji: "to" }
+      ],
+      K_WORDS: [
+        { kana: "ラーメン", romaji: "ramen" }, { kana: "カメラ", romaji: "kamera" }, { kana: "ホテル", romaji: "hoteru" },
+        { kana: "タクシー", romaji: "takushi" }, { kana: "バス", romaji: "basu" }, { kana: "テレビ", romaji: "terebi" },
+        { kana: "ナイフ", romaji: "naifu" }, { kana: "ドア", romaji: "doa" }, { kana: "ペン", romaji: "pen" },
+        { kana: "サムライ", romaji: "samurai" }, { kana: "アニメ", romaji: "anime" }
+      ],
+      YABAI_EXCLAMATIONS: [
+        { kana: "ヤバい", romaji: "yabai" },
+        { kana: "やばい", romaji: "yabai" },
+        { kana: "怖い", romaji: "kowai" },
+        { kana: "こわい", romaji: "kowai" },
+        { kana: "助けて", romaji: "tasukete" },
+        { kana: "たすけて", romaji: "tasukete" },
+        { kana: "逃げろ", romaji: "nigero" },
+        { kana: "にげろ", romaji: "nigero" },
+        { kana: "なに", romaji: "nani" },
+        { kana: "ナニ", romaji: "nani" },
+        { kana: "うそ", romaji: "uso" },
+        { kana: "ウソ", romaji: "uso" },
+        { kana: "マジ", romaji: "maji" },
+        { kana: "まじ", romaji: "maji" },
+        { kana: "無駄だ", romaji: "mudada" },
+        { kana: "むだだ", romaji: "mudada" },
+        { kana: "化け物", romaji: "bakemono" },
+        { kana: "ばけもの", romaji: "bakemono" },
+        { kana: "人でなし", romaji: "hitodenashi" }
+      ],
+      BOSS_PHRASES: [
+        { kana: "たすけてくだされ", romaji: "tasukete kudasare" },
+        { kana: "ゾンビをたおせ", romaji: "zonbi o taose" },
+        { kana: "あたまをねらえ", romaji: "atama o nerae" },
+        { kana: "にげられない", romaji: "nigerarenai" },
+        { kana: "ヤバいヤバいヤバい", romaji: "yabai yabai yabai" }
+      ]
+    };
+
+    let currentKanaMode = 'H_BASIC';
+
+    function setKanaMode(mode) {
+      currentKanaMode = mode;
+      const buttons = {
+        'H_BASIC': 'btn-mode-h-basic',
+        'H_WORDS': 'btn-mode-h-words',
+        'K_BASIC': 'btn-mode-k-basic',
+        'K_WORDS': 'btn-mode-k-words',
+        'MIXED': 'btn-mode-mixed',
+        'YABAI': 'btn-mode-yabai'
+      };
+      Object.keys(buttons).forEach(m => {
+        const btn = document.getElementById(buttons[m]);
+        if (!btn) return;
+        if (m === mode) {
+          btn.className = m === 'YABAI' 
+            ? 'py-2 px-1 font-arcade rounded bg-yellow-500 border border-yellow-300 text-black font-bold transition-all text-[11px] scale-105 shadow-lg shadow-yellow-500/50'
+            : 'py-2 px-1 font-arcade rounded bg-red-900 border border-red-500 text-white transition-all text-[11px] scale-105';
+        } else {
+          btn.className = m === 'YABAI'
+            ? 'py-2 px-1 font-arcade rounded bg-yellow-950 border border-yellow-700 text-yellow-300 transition-all text-[11px] opacity-70'
+            : 'py-2 px-1 font-arcade rounded bg-zinc-800 border border-zinc-600 text-gray-400 transition-all text-[11px] opacity-70';
+        }
+      });
+    }
+
+    // --- GAME ENGINE STATE & VARS ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let isGameRunning = false;
+    let score = 0;
+    let combo = 1;
+    let playerHp = 100;
+    let totalKills = 0;
+    let wordsSpokenCount = 0;
+    let criticalShoutsCount = 0;
+    let maxCombo = 1;
+    let gameStartTime = 0;
+
+    let isYabaiRushActive = false;
+
+    let zombies = [];
+    let particleEffects = [];
+    let floatingTexts = [];
+
+    let spawnTimer = 0;
+    let spawnInterval = 320;
+    let waveDifficulty = 1;
+    let isBossWave = false;
+    let targetSlowdownTimer = 0;
+    let screenShakeTimer = 0;
+
+    // --- MANGA MANIFESTED FLOATING TEXT CLASS ---
+    class MangaActionText {
+      constructor(text, x, y, isYabai = false) {
+        this.text = text;
+        this.x = x;
+        this.y = y;
+        this.isYabai = isYabai;
+        this.scale = isYabai ? 1.8 : 1.2;
+        this.alpha = 1.0;
+        this.rot = (Math.random() - 0.5) * 0.4;
+      }
+
+      update() {
+        this.scale += 0.03;
+        this.alpha -= 0.025;
+        this.y -= 1.5;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rot);
+        ctx.scale(this.scale, this.scale);
+        ctx.globalAlpha = Math.max(0, this.alpha);
+
+        ctx.font = '900 32px "Kosugi Maru", "Press Start 2P", sans-serif';
+        ctx.textAlign = 'center';
+
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = this.isYabai ? '#facc15' : '#000000';
+        ctx.strokeText(this.text, 0, 0);
+
+        ctx.fillStyle = this.isYabai ? '#ef4444' : '#ffffff';
+        ctx.fillText(this.text, 0, 0);
+
+        ctx.restore();
+      }
+    }
+
+    let mangaTexts = [];
+
+    // --- JAPANESE & ROMAJI MATCHING & SHOOTING LOGIC ---
+    function isFuzzyMatch(a, b) {
+      if (a === b) return true;
+      if (Math.abs(a.length - b.length) > 1) return false;
+      let diffCount = 0;
+      for (let i = 0; i < Math.min(a.length, b.length); i++) {
+        if (a[i] !== b[i]) diffCount++;
+      }
+      return diffCount <= 1;
+    }
+
+    function processSpokenTranscript(transcript) {
+      if (!isGameRunning || zombies.length === 0) return;
+
+      const cleanTranscript = transcript.toLowerCase().trim();
+      const spokenWords = cleanTranscript.split(/\s+/);
+
+      let hitZombie = null;
+
+      // Prioritize zombies closest to player (lowest Z)
+      zombies.sort((a, b) => a.z - b.z);
+
+      for (let z of zombies) {
+        const targetKana = z.kana.toLowerCase();
+        const targetRomaji = z.romaji.toLowerCase();
+
+        // Direct matching: Japanese Kana or Romaji transcript match
+        if (cleanTranscript.includes(targetKana) || cleanTranscript.includes(targetRomaji)) {
+          hitZombie = z;
+          break;
+        }
+
+        // Kanji / Alternate representations (e.g. 怖い -> こわい / kowai)
+        if (targetRomaji === 'yabai' && (cleanTranscript.includes('ヤバい') || cleanTranscript.includes('やばい') || cleanTranscript.includes('yabai') || cleanTranscript.includes('yabay'))) {
+          hitZombie = z;
+          break;
+        }
+        if (targetRomaji === 'kowai' && (cleanTranscript.includes('怖い') || cleanTranscript.includes('こわい') || cleanTranscript.includes('kowai'))) {
+          hitZombie = z;
+          break;
+        }
+        if (targetRomaji === 'tasukete' && (cleanTranscript.includes('助けて') || cleanTranscript.includes('たすけて') || cleanTranscript.includes('tasukete'))) {
+          hitZombie = z;
+          break;
+        }
+
+        // Word chunk matching
+        for (let sw of spokenWords) {
+          if (sw === targetKana || sw === targetRomaji || isFuzzyMatch(sw, targetRomaji)) {
+            hitZombie = z;
+            break;
+          }
+        }
+        if (hitZombie) break;
+      }
+
+      if (hitZombie) {
+        executeShot(hitZombie);
+      }
+    }
+
+    function executeShot(zombie) {
+      wordsSpokenCount++;
+
+      const isCritical = micVolume >= SHOUT_THRESHOLD;
+      if (isCritical) criticalShoutsCount++;
+
+      soundEngine.playGunshot(isCritical);
+      triggerMuzzleFlash();
+
+      const damage = isCritical ? 2 : 1;
+      zombie.hp -= damage;
+
+      const horizonY = canvas.height * 0.35;
+      const barrierY = canvas.height - 20;
+      const screenY = horizonY + (barrierY - horizonY) * (1 - zombie.z / 1000);
+      const centerX = canvas.width / 2;
+      const screenX = centerX + (zombie.x - centerX) * (1 - zombie.z / 1200);
+
+      createBloodSplat(screenX, screenY, isCritical ? '#f43f5e' : '#dc2626');
+
+      // YABAI Mode visual effects
+      if (currentKanaMode === 'YABAI' || zombie.romaji === 'yabai') {
+        screenShakeTimer = 15;
+        mangaTexts.push(new MangaActionText("ヤバい!!!", screenX, screenY - 40, true));
+      } else if (isCritical) {
+        mangaTexts.push(new MangaActionText("ドカン!", screenX, screenY - 30, false));
+        floatingTexts.push(new FloatingText("CRITICAL SHOUT! +500", screenX, screenY - 50, '#c026d3'));
+      }
+
+      if (zombie.hp <= 0) {
+        soundEngine.playZombieDeath();
+        zombies = zombies.filter(z => z !== zombie);
+
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        totalKills++;
+
+        // Trigger YABAI RUSH at 10 kills in YABAI mode!
+        if (currentKanaMode === 'YABAI' && totalKills >= 10 && !isYabaiRushActive) {
+          triggerYabaiRush();
+        }
+
+        const basePoints = zombie.isBoss ? 1000 : 200;
+        const pts = (basePoints + (isCritical ? 500 : 0)) * combo;
+        score += pts;
+
+        floatingTexts.push(new FloatingText(`+${pts}`, screenX, screenY, '#facc15'));
+        updateHUD();
+      } else {
+        floatingTexts.push(new FloatingText("HIT!", screenX, screenY, '#38bdf8'));
+      }
+    }
+
+    function triggerYabaiRush() {
+      isYabaiRushActive = true;
+      screenShakeTimer = 35;
+      soundEngine.playBossAlert();
+
+      // Spawn a massive horde of YABAI zombies rushing at once!
+      const hordeSize = 8;
+      for (let i = 0; i < hordeSize; i++) {
+        setTimeout(() => {
+          if (!isGameRunning) return;
+          const yabaiZombie = new Zombie({ kana: "ヤバい", romaji: "yabai" }, false);
+          // Scatter their positions and stagger their depth slightly for a frantic horde visual
+          yabaiZombie.x = (Math.random() - 0.5) * (canvas.width * 0.85);
+          yabaiZombie.z = 1100 + Math.random() * 400;
+          yabaiZombie.speed *= 1.35;
+          zombies.push(yabaiZombie);
+          soundEngine.playZombieGroan();
+
+          // Reset YABAI Rush state after the last horde zombie has spawned
+          if (i === hordeSize - 1) {
+            isYabaiRushActive = false;
+          }
+        }, i * 150);
+      }
+
+      mangaTexts.push(new MangaActionText("😱 YABAI RUSH!! 😱", canvas.width / 2, canvas.height * 0.4, true));
+      floatingTexts.push(new FloatingText("YABAI HORDE INCOMING!!", canvas.width / 2 - 120, canvas.height * 0.25, '#ef4444'));
+    }
+
+    // --- GAME LOOP & SPAWNING ---
+    function spawnZombie() {
+      let pool = [];
+      if (currentKanaMode === 'H_BASIC') pool = KANA_BANKS.H_BASIC;
+      else if (currentKanaMode === 'H_WORDS') pool = KANA_BANKS.H_WORDS;
+      else if (currentKanaMode === 'K_BASIC') pool = KANA_BANKS.K_BASIC;
+      else if (currentKanaMode === 'K_WORDS') pool = KANA_BANKS.K_WORDS;
+      else if (currentKanaMode === 'YABAI') {
+        if (isYabaiRushActive || Math.random() < 0.6) {
+          pool = [{ kana: "ヤバい", romaji: "yabai" }];
+        } else {
+          pool = KANA_BANKS.YABAI_EXCLAMATIONS;
+        }
+      } else pool = [].concat(KANA_BANKS.H_BASIC, KANA_BANKS.H_WORDS, KANA_BANKS.K_BASIC, KANA_BANKS.K_WORDS);
+
+      const shouldSpawnBoss = totalKills > 0 && totalKills % 8 === 0 && !isBossWave && !zombies.some(z => z.isBoss);
+
+      let item = null;
+      let isBoss = false;
+
+      if (shouldSpawnBoss && currentKanaMode !== 'YABAI') {
+        isBoss = true;
+        isBossWave = true;
+        item = KANA_BANKS.BOSS_PHRASES[Math.floor(Math.random() * KANA_BANKS.BOSS_PHRASES.length)];
+        soundEngine.playBossAlert();
+        floatingTexts.push(new FloatingText("WARNING: BOSS APPROACHING!", canvas.width / 2 - 150, canvas.height * 0.3, '#c026d3'));
+      } else {
+        item = pool[Math.floor(Math.random() * pool.length)];
+      }
+
+      zombies.push(new Zombie(item, isBoss));
+      soundEngine.playZombieGroan();
+    }
+
+    function updateGameLogic() {
+      if (!isGameRunning) return;
+
+      if (targetSlowdownTimer > 0) {
+        targetSlowdownTimer--;
+      }
+
+      if (screenShakeTimer > 0) {
+        screenShakeTimer--;
+      }
+
+      spawnTimer++;
+      const baseInterval = DIFFICULTY_SETTINGS[currentDifficulty].spawnInterval;
+      if (spawnTimer >= spawnInterval) {
+        spawnTimer = 0;
+        spawnInterval = Math.max(120, baseInterval - waveDifficulty * 15);
+        spawnZombie();
+      }
+
+      waveDifficulty = 1 + Math.floor(totalKills / 4);
+
+      for (let i = zombies.length - 1; i >= 0; i--) {
+        const z = zombies[i];
+        z.update();
+
+        if (z.z <= 0) {
+          playerHp -= z.isBoss ? 35 : 15;
+          combo = 1;
+          updateHUD();
+
+          soundEngine.playDamage();
+          triggerDamageFlash();
+
+          if (z.isBoss) isBossWave = false;
+          zombies.splice(i, 1);
+
+          if (playerHp <= 0) {
+            playerHp = 0;
+            gameOver();
+            return;
+          }
+        }
+      }
+
+      for (let i = mangaTexts.length - 1; i >= 0; i--) {
+        const mt = mangaTexts[i];
+        mt.update();
+        if (mt.alpha <= 0) mangaTexts.splice(i, 1);
+      }
+
+      for (let i = particleEffects.length - 1; i >= 0; i--) {
+        const p = particleEffects[i];
+        p.update();
+        if (p.alpha <= 0) particleEffects.splice(i, 1);
+      }
+
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.update();
+        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+      }
+    }
+
+    // --- SPEECH RECOGNITION (Web Speech API set to Japanese ja-JP) ---
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        document.getElementById('stt-support-badge').textContent = 'STT UNSUPPORTED';
+        document.getElementById('stt-support-badge').className = 'px-2 py-0.5 rounded text-[10px] font-arcade bg-red-950 text-red-400 border border-red-700';
+        document.getElementById('mic-status-text').textContent = 'Speech API not supported. Use Romaji Keyboard mode!';
+        document.getElementById('chk-keyboard-fallback').checked = true;
+        toggleKeyboardFallbackContainer(true);
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'ja-JP';
+      recognition.maxAlternatives = 3;
+
+      recognition.onstart = () => {
+        isSpeechActive = true;
+        document.getElementById('mic-dot').className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+        document.getElementById('mic-status-text').textContent = 'Japanese STT (ja-JP) Active! Speak Kana/Japanese now.';
+        document.getElementById('mic-ping').style.opacity = '1';
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech Recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          document.getElementById('mic-status-text').textContent = 'Mic permission denied! Use Romaji keyboard input.';
+          document.getElementById('chk-keyboard-fallback').checked = true;
+          toggleKeyboardFallbackContainer(true);
+        }
+      };
+
+      recognition.onend = () => {
+        isSpeechActive = false;
+        if (isGameRunning) {
+          // Restart immediately for continuous listening on mobile environments
+          setTimeout(() => { safeStartRecognition(); }, 100);
+        } else {
+          document.getElementById('mic-dot').className = 'w-3 h-3 rounded-full bg-yellow-500';
+          document.getElementById('mic-ping').style.opacity = '0';
+        }
+      };
+
+      recognition.onresult = (event) => {
+        let fullTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          for (let j = 0; j < event.results[i].length; j++) {
+            fullTranscript += ' ' + event.results[i][j].transcript;
+          }
+        }
+
+        const cleanText = fullTranscript.trim();
+        updateSpeechBanner(cleanText);
+
+        if (isGameRunning && cleanText.length > 0) {
+          targetSlowdownTimer = 25; 
+          processSpokenTranscript(cleanText);
+        }
+      };
+    }
+
+    function safeStartRecognition() {
+      if (recognition && !isSpeechActive) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.warn('Speech recognition start attempt skipped:', e.message);
+        }
+      }
+    }
+
+    function updateSpeechBanner(text) {
+      const display = document.getElementById('speech-transcript-display');
+      if (text) {
+        display.textContent = `"${text}"`;
+        display.classList.add('text-yellow-300');
+      }
+    }
+
+    // --- RENDER GAME CANVAS ---
+    function render() {
+      ctx.fillStyle = '#08070c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const horizonY = canvas.height * 0.35;
+
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+      skyGrad.addColorStop(0, '#020205');
+      skyGrad.addColorStop(1, '#2e1065');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, horizonY);
+
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.arc(canvas.width * 0.8, horizonY * 0.5, 40, 0, Math.PI * 2);
+      ctx.fill();
+
+      const groundGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
+      groundGrad.addColorStop(0, '#090514');
+      groundGrad.addColorStop(1, '#1e0826');
+      ctx.fillStyle = groundGrad;
+      ctx.fillRect(0, horizonY, canvas.width, canvas.height - horizonY);
+
+      ctx.strokeStyle = 'rgba(217, 70, 239, 0.25)';
+      ctx.lineWidth = 1;
+
+      zombies.sort((a, b) => b.z - a.z);
+
+      ctx.save();
+      if (screenShakeTimer > 0) {
+        const dx = (Math.random() - 0.5) * screenShakeTimer * 0.8;
+        const dy = (Math.random() - 0.5) * screenShakeTimer * 0.8;
+        ctx.translate(dx, dy);
+      }
+
+      zombies.forEach(z => z.draw());
+
+      particleEffects.forEach(p => p.draw());
+
+      mangaTexts.forEach(mt => mt.draw());
+
+      floatingTexts.forEach(ft => ft.draw());
+
+      ctx.restore();
+    }
+
+    function gameLoop() {
+      updateGameLogic();
+      render();
+      if (isGameRunning) {
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    // --- HUD & UI UPDATES ---
+    function updateHUD() {
+      document.getElementById('hud-score').textContent = String(score).padStart(6, '0');
+      document.getElementById('hud-combo').textContent = `x${combo}`;
+      document.getElementById('hud-hp-val').textContent = `${Math.max(0, playerHp)}%`;
+      document.getElementById('hud-hp-bar').style.width = `${Math.max(0, playerHp)}%`;
+    }
+
+    function returnToMainMenu() {
+      isGameRunning = false;
+      document.getElementById('gameover-overlay').classList.add('hidden');
+      document.getElementById('menu-overlay').classList.remove('hidden');
+      document.getElementById('hud-stats').classList.add('hidden');
+      document.getElementById('hud-stats').classList.remove('flex');
+    }
+
+    function startGame() {
+      soundEngine.init();
+      initMicVolumeAnalyzer();
+
+      isGameRunning = true;
+      isYabaiRushActive = false;
+      score = 0;
+      combo = 1;
+      playerHp = 100;
+      totalKills = 0;
+      wordsSpokenCount = 0;
+      criticalShoutsCount = 0;
+      maxCombo = 1;
+      waveDifficulty = 1;
+      targetSlowdownTimer = 0;
+      spawnInterval = DIFFICULTY_SETTINGS[currentDifficulty].spawnInterval;
+      zombies = [];
+      particleEffects = [];
+      floatingTexts = [];
+      mangaTexts = [];
+      gameStartTime = Date.now();
+
+      document.getElementById('menu-overlay').classList.add('hidden');
+      document.getElementById('gameover-overlay').classList.add('hidden');
+      document.getElementById('hud-stats').classList.remove('hidden');
+      document.getElementById('hud-stats').classList.add('flex');
+
+      updateHUD();
+
+      safeStartRecognition();
+
+      spawnZombie();
+      spawnZombie();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameOver() {
+      isGameRunning = false;
+
+      const elapsedMinutes = Math.max(0.1, (Date.now() - gameStartTime) / 60000);
+      const wpm = Math.floor(wordsSpokenCount / elapsedMinutes);
+
+      document.getElementById('go-score').textContent = score;
+      document.getElementById('go-kills').textContent = totalKills;
+      document.getElementById('go-wpm').textContent = wpm;
+      document.getElementById('go-combo').textContent = `x${maxCombo}`;
+      document.getElementById('go-shouts').textContent = criticalShoutsCount;
+
+      document.getElementById('gameover-overlay').classList.remove('hidden');
+    }
+
+    function toggleKeyboardFallbackContainer(show) {
+      const container = document.getElementById('keyboard-input-container');
+      if (show) {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    // --- EVENT LISTENERS ---
+    document.getElementById('btn-start').addEventListener('click', startGame);
+    document.getElementById('btn-restart').addEventListener('click', startGame);
+    document.getElementById('btn-main-menu').addEventListener('click', returnToMainMenu);
+
+    document.getElementById('chk-keyboard-fallback').addEventListener('change', (e) => {
+      toggleKeyboardFallbackContainer(e.target.checked);
+    });
+
+    const typeInput = document.getElementById('type-shooter-input');
+    const typeBtn = document.getElementById('btn-type-shoot');
+
+    function handleTypeShoot() {
+      const val = typeInput.value.trim().toUpperCase();
+      if (val) {
+        processSpokenTranscript(val);
+        typeInput.value = '';
+      }
+    }
+
+    typeBtn.addEventListener('click', handleTypeShoot);
+    typeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleTypeShoot();
+    });
+
+    // --- INIT ON LOAD ---
+    window.addEventListener('load', () => {
+      initSpeechRecognition();
+      render();
+    });
+  </script>
+</body>
+</html>
