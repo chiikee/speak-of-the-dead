@@ -308,6 +308,7 @@
     const $ = (id) => document.getElementById(id);
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const IS_ANDROID = /Android/i.test(navigator.userAgent);
 
     if (!CanvasRenderingContext2D.prototype.roundRect) {
       CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
@@ -403,12 +404,25 @@
     let analyser = null;
     let microphone = null;
     let micInitStarted = false;
+    let micStream = null;
+
+    // Release the shout meter's microphone (Android can't share the mic with speech recognition)
+    function stopMicVolumeAnalyzer() {
+      if (micStream) micStream.getTracks().forEach((t) => t.stop());
+      if (audioContext) { try { audioContext.close(); } catch (e) {} }
+      micStream = null; audioContext = null; analyser = null; microphone = null;
+      micInitStarted = false;
+      micVolume = 0; micPeak = 0;
+      $('mic-volume-bar').style.width = '0%';
+      $('lbl-mic-vol').textContent = 'OFF';
+    }
 
     async function initMicVolumeAnalyzer() {
       if (micInitStarted) return;
       micInitStarted = true;
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        micStream = stream;
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
         microphone = audioContext.createMediaStreamSource(stream);
@@ -1218,7 +1232,9 @@
       }
 
       recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      // Android ends a session after each phrase anyway, and in continuous mode it repeats earlier
+      // text in later results (so old words would fire again). One phrase per session is cleaner there.
+      recognition.continuous = !IS_ANDROID;
       recognition.interimResults = true;
       recognition.lang = 'ja-JP';
       recognition.maxAlternatives = 3;
@@ -1308,6 +1324,11 @@
       });
       $('local-options').classList.toggle('hidden', engine !== 'local');
       if (engine !== 'browser' && recognition && isSpeechActive) { try { recognition.stop(); } catch (e) {} }
+      if (engine === 'browser' && localCapture) { // free the mic for the browser engine
+        localCapture.stream.getTracks().forEach((t) => t.stop());
+        try { localCapture.ac.close(); } catch (e) {}
+        localCapture = null;
+      }
       updateEngineNote();
     }
 
@@ -1715,7 +1736,10 @@
 
     function startGame() {
       soundEngine.init();
-      initMicVolumeAnalyzer();
+      // On Android the browser's speech recognition hears only silence if the page also opens the
+      // mic (confirmed on a Pixel 9 Pro), so the shout meter stays off there with the browser engine.
+      const shareMic = !(IS_ANDROID && speechEngine === 'browser');
+      if (shareMic) initMicVolumeAnalyzer(); else stopMicVolumeAnalyzer();
       resizeCanvas();
 
       isGameRunning = true;
