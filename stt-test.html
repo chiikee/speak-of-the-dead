@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Speech Recognition Test</title>
+  <style>
+    :root {
+      --bg: #f6f6f8; --panel: #ffffff; --text: #18181b; --muted: #6b7280; --border: #d4d4d8;
+      --accent: #dc2626; --ok: #15803d; --warn: #b45309; --bad: #b91c1c; --log-bg: #0b0b0f; --log-text: #a7f3d0;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b0a10; --panel: #17161d; --text: #e5e5e5; --muted: #9ca3af; --border: #3f3f46;
+        --accent: #ef4444; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --log-bg: #000000; --log-text: #86efac;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0b0a10; --panel: #17161d; --text: #e5e5e5; --muted: #9ca3af; --border: #3f3f46;
+      --accent: #ef4444; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --log-bg: #000000; --log-text: #86efac;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
+    }
+    main { max-width: 720px; margin: 0 auto; display: grid; gap: 12px; }
+    h1 { font-size: 1.25rem; margin: 4px 0 0; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .panel h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
+    .env { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 0.9rem; }
+    .env dt { color: var(--muted); }
+    .env dd { margin: 0; word-break: break-word; }
+    .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+    .options { display: grid; gap: 8px; }
+    .options label { display: flex; align-items: center; gap: 8px; }
+    select, button { font: inherit; }
+    select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }
+    input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button {
+      padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--panel); color: var(--text); font-weight: 600; cursor: pointer;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #state { font-weight: 700; }
+    #transcript {
+      min-height: 3.2em; font-size: 1.6rem; font-weight: 700; word-break: break-word;
+    }
+    #interim { color: var(--muted); font-size: 1.1rem; min-height: 1.5em; word-break: break-word; }
+    .meter { height: 10px; border-radius: 5px; background: var(--border); overflow: hidden; }
+    .meter > div { height: 100%; width: 0%; background: var(--ok); transition: width 60ms linear; }
+    #log {
+      background: var(--log-bg); color: var(--log-text); border-radius: 8px; padding: 10px;
+      font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word;
+      max-height: 50vh; overflow-y: auto; margin: 0;
+    }
+    .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🎤 Speech Recognition Test</h1>
+
+  <section class="panel">
+    <h2>This device</h2>
+    <dl class="env" id="env"></dl>
+  </section>
+
+  <section class="panel">
+    <h2>Options</h2>
+    <div class="options">
+      <label>Language
+        <select id="opt-lang">
+          <option value="ja-JP">Japanese (ja-JP)</option>
+          <option value="en-US">English (en-US)</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="opt-continuous"> Continuous (keep listening across phrases)</label>
+      <label><input type="checkbox" id="opt-interim" checked> Interim results (words while you talk)</label>
+      <label><input type="checkbox" id="opt-restart" checked> Auto-restart when a session ends</label>
+      <label><input type="checkbox" id="opt-extra-mic"> Also open a second mic stream (like the game’s shout meter)</label>
+    </div>
+    <p class="hint">Start with the defaults. Then turn on the second mic stream to see whether that breaks recognition on this phone.</p>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <h2 style="margin:0">Recognition</h2>
+      <span>State: <span id="state">idle</span></span>
+    </div>
+    <div class="buttons" style="margin-top:10px">
+      <button class="primary" id="btn-start">Start</button>
+      <button id="btn-stop" disabled>Stop</button>
+      <button id="btn-perm">Ask mic permission</button>
+      <button id="btn-clear">Clear</button>
+    </div>
+    <div style="margin-top:12px">
+      <div id="interim"></div>
+      <div id="transcript"></div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="row"><span class="hint" style="margin:0">Second mic stream level</span><span class="hint" style="margin:0" id="level-label">off</span></div>
+      <div class="meter"><div id="level"></div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <h2 style="margin:0">Event log</h2>
+      <button id="btn-copy" style="padding:6px 10px">Copy log</button>
+    </div>
+    <pre id="log" style="margin-top:8px"></pre>
+  </section>
+</main>
+
+<script>
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const t0 = performance.now();
+  const logLines = [];
+
+  function log(msg, cls) {
+    const line = `${((performance.now() - t0) / 1000).toFixed(2)}s  ${msg}`;
+    logLines.push(line);
+    console.log('[stt]', msg);
+    const el = $('log');
+    el.textContent = logLines.join('\n');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setState(text, cls) {
+    $('state').textContent = text;
+    $('state').className = cls || '';
+  }
+
+  // ---- Environment ----
+  async function showEnvironment() {
+    const rows = [];
+    const add = (k, v, cls) => rows.push(`<dt>${k}</dt><dd class="${cls || ''}">${v}</dd>`);
+    add('Browser', navigator.userAgent.replace(/</g, '&lt;'));
+    add('Secure page', window.isSecureContext ? 'yes ✓' : 'NO: the mic only works on https:// or localhost', window.isSecureContext ? 'ok' : 'bad');
+    add('Speech API', SR ? (window.SpeechRecognition ? 'SpeechRecognition ✓' : 'webkitSpeechRecognition ✓') : 'not available', SR ? 'ok' : 'bad');
+    add('getUserMedia', navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? 'available ✓' : 'not available', navigator.mediaDevices ? 'ok' : 'bad');
+    let perm = 'unknown (browser doesn’t say)';
+    let permCls = '';
+    try {
+      const p = await navigator.permissions.query({ name: 'microphone' });
+      perm = p.state;
+      permCls = p.state === 'granted' ? 'ok' : p.state === 'denied' ? 'bad' : 'warn';
+      p.onchange = () => { log(`mic permission changed → ${p.state}`); showEnvironment(); };
+    } catch (e) { /* not supported */ }
+    add('Mic permission', perm, permCls);
+    $('env').innerHTML = rows.join('');
+  }
+
+  // ---- Optional second mic stream (to test conflicts) ----
+  let extra = null;
+  async function openExtraMic() {
+    if (extra) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const an = ac.createAnalyser();
+      an.fftSize = 512;
+      ac.createMediaStreamSource(stream).connect(an);
+      const data = new Uint8Array(an.fftSize);
+      extra = { stream, ac, an, raf: 0 };
+      const tick = () => {
+        if (!extra) return;
+        an.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+        const pct = Math.min(100, Math.round(Math.sqrt(sum / data.length) * 400));
+        $('level').style.width = pct + '%';
+        $('level-label').textContent = pct + '%';
+        extra.raf = requestAnimationFrame(tick);
+      };
+      tick();
+      log('second mic stream opened: ' + (stream.getAudioTracks()[0] || {}).label);
+    } catch (e) {
+      log(`second mic stream FAILED: ${e.name} ${e.message}`);
+    }
+  }
+  function closeExtraMic() {
+    if (!extra) return;
+    cancelAnimationFrame(extra.raf);
+    extra.stream.getTracks().forEach((t) => t.stop());
+    try { extra.ac.close(); } catch (e) {}
+    extra = null;
+    $('level').style.width = '0%';
+    $('level-label').textContent = 'off';
+    log('second mic stream closed');
+  }
+
+  // ---- Recognition ----
+  let rec = null;
+  let wanted = false;   // user pressed Start and not Stop
+  let active = false;   // a session is running
+  let finalText = '';
+
+  function buildRecognizer() {
+    const r = new SR();
+    r.lang = $('opt-lang').value;
+    r.continuous = $('opt-continuous').checked;
+    r.interimResults = $('opt-interim').checked;
+    r.maxAlternatives = 3;
+
+    r.onstart = () => { active = true; setState('listening', 'ok'); log(`start (lang=${r.lang}, continuous=${r.continuous}, interim=${r.interimResults})`); };
+    r.onaudiostart = () => log('audiostart: mic is open');
+    r.onsoundstart = () => log('soundstart: hearing sound');
+    r.onspeechstart = () => log('speechstart: hearing speech');
+    r.onspeechend = () => log('speechend');
+    r.onsoundend = () => log('soundend');
+    r.onaudioend = () => log('audioend: mic closed');
+    r.onnomatch = () => log('nomatch: heard something but no words');
+    r.onerror = (e) => {
+      log(`ERROR: ${e.error}${e.message ? ' (' + e.message + ')' : ''}`);
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { wanted = false; }
+      setState('error: ' + e.error, 'bad');
+    };
+    r.onend = () => {
+      active = false;
+      log('end');
+      if (wanted && $('opt-restart').checked) {
+        setTimeout(() => { if (wanted && !active) startSession('auto-restart'); }, 150);
+      } else {
+        wanted = false;
+        setState('idle');
+        $('btn-start').disabled = false;
+        $('btn-stop').disabled = true;
+      }
+    };
+    r.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        const alts = [];
+        for (let j = 0; j < res.length; j++) {
+          const c = res[j].confidence;
+          alts.push(`“${res[j].transcript}”${c ? ' ' + c.toFixed(2) : ''}`);
+        }
+        log(`result #${i} ${res.isFinal ? 'FINAL' : 'interim'} (resultIndex=${e.resultIndex}, total=${e.results.length}): ${alts.join(' | ')}`);
+        if (res.isFinal) finalText += res[0].transcript + ' ';
+        else interim += res[0].transcript;
+      }
+      $('transcript').textContent = finalText.trim();
+      $('interim').textContent = interim;
+    };
+    return r;
+  }
+
+  function startSession(reason) {
+    rec = buildRecognizer();
+    try {
+      rec.start();
+      log(`start() called${reason ? ' (' + reason + ')' : ''}`);
+    } catch (e) {
+      log(`start() threw: ${e.name} ${e.message}`);
+    }
+  }
+
+  $('btn-start').addEventListener('click', async () => {
+    if (!SR) { log('This browser has no speech recognition.'); return; }
+    wanted = true;
+    $('btn-start').disabled = true;
+    $('btn-stop').disabled = false;
+    setState('starting…', 'warn');
+    if ($('opt-extra-mic').checked) await openExtraMic(); else closeExtraMic();
+    startSession('button');
+  });
+
+  $('btn-stop').addEventListener('click', () => {
+    wanted = false;
+    if (rec) { try { rec.stop(); log('stop() called'); } catch (e) { log(`stop() threw: ${e.message}`); } }
+    closeExtraMic();
+  });
+
+  $('btn-perm').addEventListener('click', async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      log('mic permission granted: ' + (s.getAudioTracks()[0] || {}).label);
+      s.getTracks().forEach((t) => t.stop());
+    } catch (e) {
+      log(`mic permission FAILED: ${e.name} ${e.message}`);
+    }
+    showEnvironment();
+  });
+
+  $('btn-clear').addEventListener('click', () => {
+    logLines.length = 0;
+    $('log').textContent = '';
+    finalText = '';
+    $('transcript').textContent = '';
+    $('interim').textContent = '';
+  });
+
+  $('btn-copy').addEventListener('click', async () => {
+    const text = `${navigator.userAgent}\n\n${logLines.join('\n')}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      $('btn-copy').textContent = 'Copied ✓';
+    } catch (e) {
+      $('btn-copy').textContent = 'Copy failed';
+    }
+    setTimeout(() => { $('btn-copy').textContent = 'Copy log'; }, 1500);
+  });
+
+  showEnvironment();
+  log(SR ? 'ready: press Start and speak' : 'no speech recognition in this browser');
+</script>
+</body>
+</html>
