@@ -54,3 +54,4 @@ Tailwind's CDN was replaced by precompiled utilities in `utilities.css` (CDN war
 
 ## Next tasks
 1. Optional: a critical-hit alternative where the shout meter is off.
+2. English variant of YABAI mode (`YABAI_EXCLAMATIONS` / YABAI Rush) for non-Japanese speakers.

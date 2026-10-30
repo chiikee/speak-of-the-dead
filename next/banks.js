@@ -113,22 +113,62 @@ const KANA_BANKS = {
     { kana: 'こっちにくるな', romaji: 'kocchi ni kuruna', alts: ['こっちに来るな', 'こっち来るな', 'こっちくるな'] }, // "get away from me!"
     { kana: 'もうだめだ', romaji: 'mou dame da', alts: ['もう駄目だ'] },                                 // "it's hopeless!"
     { kana: 'ヤバいヤバいヤバい', romaji: 'yabai yabai yabai', alts: [] }
+  ],
+  // YABAI mode for non-Japanese speakers: say the English, the Japanese original is shown under it.
+  // First entry is the rush zombie, like ヤバい above.
+  YABAI_EN: [
+    { kana: 'OH NO!', romaji: 'ヤバい', alts: ['oh no no'] },
+    { kana: 'HELP!', romaji: 'たすけて', alts: ['help me'] },
+    { kana: 'RUN!', romaji: 'にげろ', alts: ['run away'] },
+    { kana: 'WHAT?!', romaji: 'なに', alts: [] },
+    { kana: 'NO WAY!', romaji: 'うそ', alts: [] },
+    { kana: 'SERIOUSLY?!', romaji: 'まじで', alts: [] },
+    { kana: 'STAY BACK!', romaji: 'くるな', alts: [] },
+    { kana: 'STOP!', romaji: 'やめて', alts: [] },
+    { kana: 'WAIT!', romaji: 'まって', alts: [] },
+    { kana: 'MONSTER!', romaji: 'ばけもの', alts: [] },
+    { kana: 'SCARY!', romaji: 'こわい', alts: [] },
+    // Seeing them
+    { kana: 'IT’S A ZOMBIE!', romaji: 'ゾンビだ', alts: ['it is a zombie'] },
+    { kana: 'IT MOVED!', romaji: 'うごいた', alts: [] },
+    { kana: 'IT’S ALIVE!', romaji: 'いきてる', alts: ['it is alive'] },
+    { kana: 'HERE THEY COME!', romaji: 'くるぞ', alts: [] },
+    { kana: 'GROSS!', romaji: 'きもい', alts: [] },
+    { kana: 'IT STINKS!', romaji: 'くさい', alts: [] },
+    // Panicking
+    { kana: 'THIS IS BAD!', romaji: 'まずい', alts: [] },
+    { kana: 'NO NO NO!', romaji: 'いやだ', alts: [] },
+    { kana: 'YOU’RE KIDDING!', romaji: 'まじかよ', alts: ['you are kidding', 'your kidding'] },
+    { kana: 'SOMEBODY!', romaji: 'だれか', alts: ['someone'] },
+    { kana: 'HURRY!', romaji: 'はやく', alts: ['hurry up'] },
+    { kana: 'HIDE!', romaji: 'かくれろ', alts: [] },
+    { kana: 'I GOT BITTEN!', romaji: 'かまれた', alts: ['i got bit', 'i’ve been bitten'] },
+    { kana: 'I’M GONNA DIE!', romaji: 'しぬ', alts: ['i am gonna die', 'i’m going to die'] },
+    { kana: 'WE’RE DONE FOR!', romaji: 'おわった', alts: ['we are done for'] },
+    // Fighting back
+    { kana: 'FIGHT!', romaji: 'たたかえ', alts: [] },
+    { kana: 'DAMN IT!', romaji: 'ちくしょう', alts: ['dammit', 'damnit'] },
+    { kana: 'ARE YOU OKAY?!', romaji: 'だいじょうぶ', alts: ['are you ok', 'are you alright'] }
   ]
 };
-const YABAI_ITEM = KANA_BANKS.YABAI_EXCLAMATIONS[0];
 
 let currentKanaMode = 'H_BASIC';
+
+function isEnglishMode() { return currentKanaMode === 'YABAI_EN'; }
+function isYabaiMode() { return currentKanaMode === 'YABAI' || currentKanaMode === 'YABAI_EN'; }
+function yabaiBank() { return isEnglishMode() ? KANA_BANKS.YABAI_EN : KANA_BANKS.YABAI_EXCLAMATIONS; }
+function yabaiItem() { return yabaiBank()[0]; }
 
 function setKanaMode(mode) {
   currentKanaMode = mode;
   const buttons = {
     H_BASIC: 'btn-mode-h-basic', H_WORDS: 'btn-mode-h-words', K_BASIC: 'btn-mode-k-basic',
-    K_WORDS: 'btn-mode-k-words', MIXED: 'btn-mode-mixed', YABAI: 'btn-mode-yabai'
+    K_WORDS: 'btn-mode-k-words', MIXED: 'btn-mode-mixed', YABAI: 'btn-mode-yabai', YABAI_EN: 'btn-mode-yabai-en'
   };
   Object.keys(buttons).forEach(m => {
     const btn = $(buttons[m]);
     const active = m === mode;
-    if (m === 'YABAI') {
+    if (m === 'YABAI' || m === 'YABAI_EN') {
       btn.className = active
         ? 'py-2 px-1 rounded border border-yellow-300 bg-yellow-500 text-black font-bold transition-all shadow-lg'
         : 'py-2 px-1 rounded border border-yellow-700 bg-yellow-950 text-yellow-300 transition-all opacity-80';
@@ -137,4 +177,6 @@ function setKanaMode(mode) {
     }
     btn.setAttribute('aria-pressed', active);
   });
+  if (recognition) $('stt-support-badge').textContent = isEnglishMode() ? 'en-US' : 'ja-JP';
+  updateEngineNote();
 }
