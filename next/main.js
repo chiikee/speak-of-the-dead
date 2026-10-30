@@ -1,3 +1,7 @@
+// Shown small under Start, so a stale cached copy can be spotted.
+const APP_VERSION = 'v2-next';
+$('app-version').textContent = APP_VERSION;
+
 // --- EVENTS ---
 $('btn-start').addEventListener('click', handleStartClick);
 $('btn-restart').addEventListener('click', handleStartClick);

@@ -134,12 +134,12 @@ function updateEngineNote() {
   const note = $('engine-note');
   if (speechEngine === 'browser') {
     note.textContent = (window.SpeechRecognition || window.webkitSpeechRecognition)
-      ? 'Uses your browser’s speech service: the most accurate, but only in Chrome, Edge and usually Safari, and it needs internet. If it isn’t available, the game switches to Vosk.'
+      ? 'Your browser’s speech service: most accurate, needs internet. Chrome, Edge and usually Safari; otherwise the game switches to Vosk.'
       : 'This browser has no speech service. Choose Vosk to play with your voice.';
   } else {
     note.textContent = isEnglishMode()
-      ? 'Vosk only understands Japanese, so English YABAI mode is keyboard-only with it. Choose your browser engine to play by voice.'
-      : 'Vosk runs inside the page, so it works in any modern browser and offline. Quick to load and reacts while you talk, but less accurate. ' +
+      ? 'Vosk only knows Japanese, so English YABAI is keyboard-only with it. Choose Browser to play by voice.'
+      : 'Runs inside the page: any modern browser, works offline, reacts while you talk, but less accurate. ' +
         (localReady ? 'Loaded ✓' : `Downloads ${LOCAL_MODEL_SIZE} when you press Start.`);
   }
 }
