@@ -41,7 +41,8 @@ function setDifficulty(diff) {
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
 let W = 1, H = 1;
-const Z_FAR = 1400;
+const Z_FAR = 700;          // spawn depth: start scale D_NEAR / (Z_FAR + D_NEAR), about a fifth of full size
+const Z_SPEED = Z_FAR / 1400; // speeds were tuned for a 1400-deep lane; keeps the walk time the same
 
 function resizeCanvas() {
   const container = $('game-area');
@@ -59,20 +60,28 @@ function unit() { return clamp(Math.min(W, H * 1.1) / 700, 0.55, 1.5); }
 // Pinhole-camera perspective: zombies start tiny at the vanishing point and loom
 // larger and faster as they close in, ending up filling the screen in front of you.
 const D_NEAR = 160;          // depth (in z units) where a zombie reaches the player
+// How far the feet drop below the horizon at full size. Tied to body size, not screen height, so on tall phone
+// screens zombies grow toward you instead of sliding down the screen.
+function groundDrop() { return bodyBase() * 0.86; }
+function horizonY() { return clamp(H * 1.12 - groundDrop(), H * 0.35, H * 0.5); }
 function project(z, xn) {
-  const horizonY = H * 0.35;
-  const nearFeetY = H * 1.12; // at the player, feet are below the bottom edge
+  const hy = horizonY();
+  const nearFeetY = hy + groundDrop(); // at the player; below the bottom edge on landscape screens
   const zc = clamp(z, 0, Z_FAR);
   const scale = D_NEAR / (zc + D_NEAR);
-  // drift toward the centre (toward you) as they approach
-  const xEff = xn * (0.35 + 0.65 * (zc / Z_FAR));
+  // drift toward the centre (toward you), mostly in the last stretch
+  const xEff = xn * (0.25 + 0.75 * (zc / Z_FAR));
   return {
     x: W / 2 + xEff * W * 1.6 * scale,
-    y: horizonY + (nearFeetY - horizonY) * scale,
+    y: hy + (nearFeetY - hy) * scale,
     scale
   };
 }
-function bodyBase() { return Math.min(H, W * 1.2) * 0.9; }
+// Portrait screens allow a body taller than the width suggests (the nearest zombie fills most of the width), which
+// keeps the horizon up near where it is on landscape screens
+function bodyBase() { return Math.min(H, W * 1.8) * 0.9; }
+// Random lane; wide screens use more of the width so the sides aren't empty
+function randomLane(share = 1) { return (Math.random() - 0.5) * 2 * share * clamp(0.55 * W / H, 0.35, 1); }
 
 // --- GAME STATE ---
 let isGameRunning = false;
@@ -98,11 +107,11 @@ class Zombie {
     this.hp = isBoss ? 3 : 1;
     this.maxHp = this.hp;
     this.z = Z_FAR;
-    this.xn = (Math.random() - 0.5) * 0.7;
+    this.xn = randomLane();
     const d = DIFFICULTY_SETTINGS[currentDifficulty].baseSpeed;
     // Zombies also get faster as the waves go on (up to +60%)
     const ramp = Math.min(1.6, 1 + (waveDifficulty - 1) * 0.05);
-    this.speed = (0.7 + Math.random() * 0.5) * d * ramp * (isBoss ? 0.6 : 1.0);
+    this.speed = (0.7 + Math.random() * 0.5) * d * ramp * Z_SPEED * (isBoss ? 0.6 : 1.0);
     this.limbAngle = Math.random() * Math.PI;
     this.hitFlash = 0;
 
@@ -110,11 +119,15 @@ class Zombie {
     this.single = this.target.length === 1;
     this.jaSet = new Set();
     this.roSet = new Set();
+    // English words (YABAI_EN) also go in jaSet, so the streaming matcher fires once per repeat
+    const english = !HAS_JA.test(data.kana);
     const r0 = normRomaji(data.romaji);
     if (r0) this.roSet.add(r0);
     for (const f of [data.kana, ...(data.alts || [])]) {
-      if (/^[\x00-\x7f]+$/.test(f)) { const r = normRomaji(f); if (r) this.roSet.add(r); }
-      else { const n = normJa(f); if (n) this.jaSet.add(n); }
+      if (!HAS_JA.test(f)) {
+        const r = normRomaji(f); if (r) this.roSet.add(r);
+        if (english) { const n = normJa(f); if (n) this.jaSet.add(n); }
+      } else { const n = normJa(f); if (n) this.jaSet.add(n); }
     }
   }
 
@@ -232,21 +245,33 @@ class Zombie {
     ctx.arc(h * 0.1, -h * 0.6 - reach, h * 0.05, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
     ctx.restore();
+  }
 
-    // Name tag above the head, kept fully on screen
-    const kanaFs = Math.max(13, Math.floor(34 * scale * u));
-    const roFs = Math.max(10, Math.floor(20 * scale * u));
+  // Name tag size and natural spot on the torso (like Typing of the Dead). The words are what the player reads, so they
+  // only grow a little as the zombie closes in instead of shrinking into the distance.
+  labelBox() {
+    const p = project(this.z, this.xn);
+    const scale = p.scale;
+    const h = this.size(scale);
+    const u = unit();
+    const grow = 0.6 + 0.4 * Math.min(1, scale);
+    const kanaFs = Math.round(Math.max(24, 42 * grow * u));
+    const roFs = this.romaji ? Math.round(Math.max(16, 24 * grow * u)) : 0; // English lines have no second row
     ctx.font = `bold ${kanaFs}px "Kosugi Maru", "Hiragino Sans", sans-serif`;
     const kanaW = ctx.measureText(this.kana).width;
     ctx.font = `bold ${roFs}px "Share Tech Mono", monospace`;
     const roW = ctx.measureText(this.romaji).width;
-    const pad = Math.max(6, 10 * scale * u);
+    const pad = Math.max(7, 11 * grow * u);
     const tw = Math.max(kanaW, roW) + pad * 2;
     const th = kanaFs + roFs + pad * 1.2;
     const tx = clamp(p.x, tw / 2 + 4, W - tw / 2 - 4);
-    const headTop = p.y + bob - h * 0.96;
-    const ty = Math.max(th / 2 + 10, headTop - th / 2 - 6);
+    const torsoY = p.y - h * 0.55; // ignores the walking bob so the text holds still
+    const ty = clamp(torsoY, th / 2 + 10, H - th / 2 - 4);
+    return { kanaFs, roFs, pad, tw, th, tx, ty };
+  }
 
+  drawLabel(box) {
+    const { kanaFs, roFs, pad, tw, th, tx, ty } = box;
     const slowed = targetSlowdownTimer > 0;
     ctx.fillStyle = slowed ? 'rgba(8,145,178,0.9)' : 'rgba(0,0,0,0.85)';
     ctx.strokeStyle = this.isBoss ? '#facc15' : (slowed ? '#38bdf8' : '#dc2626');
@@ -463,9 +488,9 @@ function executeShot(zombie, fromVoice) {
   const { x, y } = zombie.headPos();
   createBloodSplat(x, y, isCritical ? '#f43f5e' : '#dc2626');
 
-  if (currentKanaMode === 'YABAI' || zombie.romaji === 'yabai') {
+  if (isYabaiMode() || zombie.romaji === 'yabai') {
     screenShakeTimer = 15;
-    mangaTexts.push(new MangaActionText('ヤバい!!!', x, y - 40, true));
+    mangaTexts.push(new MangaActionText(yabaiItem().kana.replace(/!*$/, '!!!'), x, y - 40, true));
   } else if (isCritical) {
     mangaTexts.push(new MangaActionText('ドカン!', x, y - 30, false));
     floatingTexts.push(new FloatingText('CRITICAL SHOUT! +500', x, y - 50, '#c026d3'));
@@ -478,7 +503,7 @@ function executeShot(zombie, fromVoice) {
     if (combo > maxCombo) maxCombo = combo;
     totalKills++;
 
-    if (currentKanaMode === 'YABAI' && totalKills >= nextRushAt && !isYabaiRushActive) {
+    if (isYabaiMode() && totalKills >= nextRushAt && !isYabaiRushActive) {
       triggerYabaiRush();
     }
 
@@ -503,9 +528,9 @@ function triggerYabaiRush() {
     setTimeout(() => {
       if (i === hordeSize - 1) isYabaiRushActive = false;
       if (token !== loopToken || !isGameRunning) return;
-      const zb = new Zombie(YABAI_ITEM, false);
-      zb.xn = (Math.random() - 0.5) * 0.85;
-      zb.z = 1100 + Math.random() * 300;
+      const zb = new Zombie(yabaiItem(), false);
+      zb.xn = randomLane(1.2);
+      zb.z = Z_FAR * (0.79 + Math.random() * 0.21);
       zb.speed *= 1.35;
       zombies.push(zb);
       soundEngine.playZombieGroan();
@@ -525,13 +550,14 @@ function spawnZombie() {
     case 'K_BASIC': pool = KANA_BANKS.K_BASIC; break;
     case 'K_WORDS': pool = KANA_BANKS.K_WORDS; break;
     case 'YABAI':
-      pool = (isYabaiRushActive || Math.random() < 0.4) ? [YABAI_ITEM] : KANA_BANKS.YABAI_EXCLAMATIONS;
+    case 'YABAI_EN':
+      pool = (isYabaiRushActive || Math.random() < 0.4) ? [yabaiItem()] : yabaiBank();
       break;
     default:
       pool = [].concat(KANA_BANKS.H_BASIC, KANA_BANKS.H_WORDS, KANA_BANKS.K_BASIC, KANA_BANKS.K_WORDS);
   }
 
-  if (currentKanaMode !== 'YABAI' && totalKills >= nextBossAt && !zombies.some((z) => z.isBoss)) {
+  if (!isYabaiMode() && totalKills >= nextBossAt && !zombies.some((z) => z.isBoss)) {
     nextBossAt = totalKills + 8; // a new boss every 8 kills
     const item = KANA_BANKS.BOSS_PHRASES[Math.floor(Math.random() * KANA_BANKS.BOSS_PHRASES.length)];
     zombies.push(new Zombie(item, true));
@@ -588,42 +614,42 @@ function updateGameLogic(dt) {
 
 // --- RENDER ---
 function render() {
-  const horizonY = H * 0.35;
+  const hy = horizonY();
   const u = unit();
 
   ctx.fillStyle = '#08070c';
   ctx.fillRect(0, 0, W, H);
 
-  const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
+  const sky = ctx.createLinearGradient(0, 0, 0, hy);
   sky.addColorStop(0, '#020205');
   sky.addColorStop(1, '#2e1065');
   ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, horizonY);
+  ctx.fillRect(0, 0, W, hy);
 
   ctx.save();
   ctx.shadowColor = '#dc2626';
   ctx.shadowBlur = 30;
   ctx.fillStyle = '#991b1b';
   ctx.beginPath();
-  ctx.arc(W * 0.8, horizonY * 0.5, 40 * u, 0, Math.PI * 2);
+  ctx.arc(W * 0.8, hy * 0.5, 40 * u, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  const ground = ctx.createLinearGradient(0, horizonY, 0, H);
+  const ground = ctx.createLinearGradient(0, hy, 0, H);
   ground.addColorStop(0, '#090514');
   ground.addColorStop(1, '#1e0826');
   ctx.fillStyle = ground;
-  ctx.fillRect(0, horizonY, W, H - horizonY);
+  ctx.fillRect(0, hy, W, H - hy);
 
   // Ground grid drawn with the same camera as the zombies
   ctx.strokeStyle = 'rgba(217,70,239,0.18)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = -8; i <= 8; i++) {
-    ctx.moveTo(W / 2, horizonY);             // all lines meet at the vanishing point
+    ctx.moveTo(W / 2, hy);                   // all lines meet at the vanishing point
     ctx.lineTo(W / 2 + i * W * 0.22, H * 1.12);
   }
-  for (let d = 0; d <= Z_FAR; d += 140) {
+  for (let d = 0; d <= Z_FAR; d += Z_FAR / 10) {
     const y = project(d, 0).y;
     if (y > H) continue;
     ctx.moveTo(0, y);
@@ -632,11 +658,11 @@ function render() {
   ctx.stroke();
 
   // Fog at the horizon
-  const fog = ctx.createLinearGradient(0, horizonY - 10, 0, horizonY + H * 0.12);
+  const fog = ctx.createLinearGradient(0, hy - 10, 0, hy + H * 0.12);
   fog.addColorStop(0, 'rgba(46,16,101,0.55)');
   fog.addColorStop(1, 'rgba(46,16,101,0)');
   ctx.fillStyle = fog;
-  ctx.fillRect(0, horizonY - 10, W, H * 0.12 + 10);
+  ctx.fillRect(0, hy - 10, W, H * 0.12 + 10);
 
   zombies.sort((a, b) => b.z - a.z);
 
@@ -644,7 +670,9 @@ function render() {
   if (screenShakeTimer > 0) {
     ctx.translate((Math.random() - 0.5) * screenShakeTimer * 0.8, (Math.random() - 0.5) * screenShakeTimer * 0.8);
   }
-  zombies.forEach((z) => z.draw());
+  // Overlap on purpose: each zombie and its label drawn together far-to-near, so a nearer zombie's body and label
+  // both cover the words behind it until it's shot
+  zombies.forEach((z) => { z.draw(); z.drawLabel(z.labelBox()); });
   particleEffects.forEach((p) => p.draw());
   mangaTexts.forEach((m) => m.draw());
   floatingTexts.forEach((f) => f.draw());
@@ -717,13 +745,15 @@ function startGame() {
   updateHUD();
   if (speechEngine === 'browser') {
     safeStartRecognition();
+  } else if (isEnglishMode()) {
+    useKeyboardInstead();
   } else {
     startLocalCapture().catch((err) => footerStatus(`Microphone error: ${err.name || ''} ${err.message || err}`));
   }
 
   spawnZombie();
   spawnZombie();
-  zombies[1].z = Z_FAR - 250;
+  zombies[1].z = Z_FAR * 0.82;
 
   startLoop();
 

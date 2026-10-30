@@ -28,7 +28,7 @@ function initSpeechRecognition() {
     streamState = new Map();
     prevFinal = { ja: '', index: -1 };
     $('mic-dot').className = 'w-3 h-3 shrink-0 rounded-full bg-green-500 animate-pulse';
-    $('mic-status-text').textContent = 'Japanese speech recognition is on. Speak now!';
+    $('mic-status-text').textContent = `${isEnglishMode() ? 'English' : 'Japanese'} speech recognition is on. Speak now!`;
     $('mic-ping').style.opacity = '1';
     footerStatus('Speech recognition is listening. Say something!');
   };
@@ -95,6 +95,7 @@ function initSpeechRecognition() {
 
 function safeStartRecognition() {
   if (recognition && !isSpeechActive) {
+    recognition.lang = isEnglishMode() ? 'en-US' : 'ja-JP'; // takes effect on start()
     try { recognition.start(); } catch (e) { footerStatus(`Couldn’t start speech recognition: ${e.message}`); }
   }
 }
@@ -133,12 +134,21 @@ function updateEngineNote() {
   const note = $('engine-note');
   if (speechEngine === 'browser') {
     note.textContent = (window.SpeechRecognition || window.webkitSpeechRecognition)
-      ? 'Uses your browser’s speech service: the most accurate, but only in Chrome, Edge and usually Safari, and it needs internet. If it isn’t available, the game switches to Vosk.'
+      ? 'Your browser’s speech service: most accurate, needs internet. Chrome, Edge and usually Safari; otherwise the game switches to Vosk.'
       : 'This browser has no speech service. Choose Vosk to play with your voice.';
   } else {
-    note.textContent = 'Vosk runs inside the page, so it works in any modern browser and offline. Quick to load and reacts while you talk, but less accurate. ' +
-      (localReady ? 'Loaded ✓' : `Downloads ${LOCAL_MODEL_SIZE} when you press Start.`);
+    note.textContent = isEnglishMode()
+      ? 'Vosk only knows Japanese, so English YABAI is keyboard-only with it. Choose Browser to play by voice.'
+      : 'Runs inside the page: any modern browser, works offline, reacts while you talk, but less accurate. ' +
+        (localReady ? 'Loaded ✓' : `Downloads ${LOCAL_MODEL_SIZE} when you press Start.`);
   }
+}
+
+// Vosk has only a Japanese model, so English mode falls back to typing with it
+function useKeyboardInstead() {
+  $('chk-keyboard-fallback').checked = true;
+  toggleKeyboardFallbackContainer(true);
+  footerStatus('Vosk only understands Japanese, so type the English words in this mode.');
 }
 
 function showProgress(prefix, loaded, total, label) {
@@ -154,7 +164,7 @@ function showProgress(prefix, loaded, total, label) {
 function showLocalProgress(loaded, total, label) { showProgress('local', loaded, total, label); }
 
 async function handleStartClick() {
-  const needsLoad = speechEngine === 'local' && !localReady;
+  const needsLoad = speechEngine === 'local' && !localReady && !isEnglishMode();
   if (needsLoad) {
     const btn = $('btn-start');
     btn.disabled = true;
@@ -176,6 +186,7 @@ async function handleStartClick() {
 function fallbackToBuiltIn() {
   if (speechEngine !== 'browser') return;
   setEngine('local');
+  if (isEnglishMode()) return useKeyboardInstead();
   footerStatus('Your browser’s speech service isn’t available here. Switching to the built-in engine…');
   loadLocalModel()
     .then(() => { if (isGameRunning) return startLocalCapture(); })
@@ -358,7 +369,7 @@ function buildVoskGrammar() {
     case 'YABAI': items = KANA_BANKS.YABAI_EXCLAMATIONS; break;
     default: items = [].concat(KANA_BANKS.H_BASIC, KANA_BANKS.H_WORDS, KANA_BANKS.K_BASIC, KANA_BANKS.K_WORDS);
   }
-  if (currentKanaMode !== 'YABAI') items = items.concat(KANA_BANKS.BOSS_PHRASES);
+  if (!isYabaiMode()) items = items.concat(KANA_BANKS.BOSS_PHRASES);
   const words = new Set();
   for (const it of items) {
     for (const f of [it.kana, ...(it.alts || [])]) {

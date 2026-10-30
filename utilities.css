@@ -114,6 +114,7 @@ svg,canvas{display:block;vertical-align:middle}
 .min-h-0{min-height:0px}
 .min-w-0{min-width:0px}
 .mt-0\.5{margin-top:0.125rem}
+.mt-1{margin-top:0.25rem}
 .my-auto{margin-top:auto;margin-bottom:auto}
 .opacity-0{opacity:0}
 .opacity-60{opacity:0.6}
@@ -131,7 +132,6 @@ svg,canvas{display:block;vertical-align:middle}
 .pb-2{padding-bottom:0.5rem}
 .pb-3{padding-bottom:0.75rem}
 .pointer-events-none{pointer-events:none}
-.pt-1{padding-top:0.25rem}
 .pt-2{padding-top:0.5rem}
 .px-1{padding-left:0.25rem;padding-right:0.25rem}
 .px-2{padding-left:0.5rem;padding-right:0.5rem}
@@ -143,7 +143,6 @@ svg,canvas{display:block;vertical-align:middle}
 .py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}
 .py-3{padding-top:0.75rem;padding-bottom:0.75rem}
 .py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}
-.py-4{padding-top:1rem;padding-bottom:1rem}
 .relative{position:relative}
 .rounded{border-radius:0.25rem}
 .rounded-full{border-radius:9999px}
@@ -161,7 +160,6 @@ svg,canvas{display:block;vertical-align:middle}
 .space-y-5 > :not([hidden]) ~ :not([hidden]){margin-top:1.25rem}
 .text-2xl{font-size:1.5rem;line-height:2rem}
 .text-3xl{font-size:1.875rem;line-height:2.25rem}
-.text-4xl{font-size:2.25rem;line-height:2.5rem}
 .text-5xl{font-size:3rem;line-height:1}
 .text-\[10px\]{font-size:10px}
 .text-\[11px\]{font-size:11px}
@@ -234,7 +232,6 @@ svg,canvas{display:block;vertical-align:middle}
   .sm\:flex-row{flex-direction:row}
   .sm\:gap-3{gap:0.75rem}
   .sm\:gap-6{gap:1.5rem}
-  .sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
   .sm\:h-3\.5{height:0.875rem}
   .sm\:h-7{height:1.75rem}
   .sm\:inline{display:inline}
@@ -243,14 +240,14 @@ svg,canvas{display:block;vertical-align:middle}
   .sm\:order-2{order:2}
   .sm\:order-3{order:3}
   .sm\:p-2\.5{padding:0.625rem}
+  .sm\:p-3{padding:0.75rem}
   .sm\:p-4{padding:1rem}
   .sm\:p-5{padding:1.25rem}
   .sm\:p-6{padding:1.5rem}
   .sm\:p-8{padding:2rem}
   .sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}
-  .sm\:space-y-5 > :not([hidden]) ~ :not([hidden]){margin-top:1.25rem}
   .sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}
-  .sm\:text-6xl{font-size:3.75rem;line-height:1}
+  .sm\:text-5xl{font-size:3rem;line-height:1}
   .sm\:text-\[10px\]{font-size:10px}
   .sm\:text-\[11px\]{font-size:11px}
   .sm\:text-lg{font-size:1.125rem;line-height:1.75rem}
@@ -264,6 +261,12 @@ svg,canvas{display:block;vertical-align:middle}
   .sm\:w-auto{width:auto}
 }
 @media (min-width:768px){
+  .md\:flex-1{flex:1 1 0%}
+  .md\:flex-row{flex-direction:row}
   .md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
   .md\:inline-block{display:inline-block}
+  .md\:items-center{align-items:center}
+  .md\:max-w-3xl{max-width:48rem}
+  .md\:text-4xl{font-size:2.25rem;line-height:2.5rem}
+  .md\:w-56{width:14rem}
 }

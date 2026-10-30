@@ -113,22 +113,60 @@ const KANA_BANKS = {
     { kana: 'こっちにくるな', romaji: 'kocchi ni kuruna', alts: ['こっちに来るな', 'こっち来るな', 'こっちくるな'] }, // "get away from me!"
     { kana: 'もうだめだ', romaji: 'mou dame da', alts: ['もう駄目だ'] },                                 // "it's hopeless!"
     { kana: 'ヤバいヤバいヤバい', romaji: 'yabai yabai yabai', alts: [] }
+  ],
+  // YABAI mode for non-Japanese speakers: English lines straight out of zombie movies, no translation.
+  // First entry is the rush zombie, like ヤバい above.
+  YABAI_EN: [
+    { kana: 'ZOMBIES!', romaji: '', alts: ['zombie', 'zombi'] },
+    { kana: 'OH NO!', romaji: '', alts: ['oh no no', 'ono', 'oh now'] },
+    { kana: 'RUN!', romaji: '', alts: ['run run'] },
+    { kana: 'HELP!', romaji: '', alts: ['help me'] },
+    { kana: 'THEY’RE COMING!', romaji: '', alts: ['they are coming', 'their coming'] },
+    { kana: 'BEHIND YOU!', romaji: '', alts: [] },
+    { kana: 'LOOK OUT!', romaji: '', alts: [] },
+    { kana: 'AIM FOR THE HEAD!', romaji: '', alts: ['go for the head'] },
+    { kana: 'SHOOT IT!', romaji: '', alts: ['shoot'] },
+    { kana: 'HEADSHOT!', romaji: '', alts: ['head shot'] },
+    { kana: 'DOUBLE TAP!', romaji: '', alts: [] },
+    { kana: 'RELOAD!', romaji: '', alts: ['reloading'] },
+    { kana: 'I’M OUT OF AMMO!', romaji: '', alts: ['i am out of ammo', 'out of ammo'] },
+    { kana: 'LOCK THE DOOR!', romaji: '', alts: ['lock the doors'] },
+    { kana: 'GET TO THE CAR!', romaji: '', alts: [] },
+    { kana: 'GET TO THE ROOF!', romaji: '', alts: [] },
+    { kana: 'DON’T GO IN THERE!', romaji: '', alts: ['do not go in there'] },
+    { kana: 'LET’S SPLIT UP!', romaji: '', alts: ['lets split up', 'split up'] },
+    { kana: 'STAY QUIET!', romaji: '', alts: [] },
+    { kana: 'KEEP MOVING!', romaji: '', alts: [] },
+    { kana: 'GO GO GO!', romaji: '', alts: [] },
+    { kana: 'WE HAVE TO GO!', romaji: '', alts: ['we got to go', 'we gotta go'] },
+    { kana: 'THERE’S TOO MANY!', romaji: '', alts: ['there are too many', 'there is too many', 'too many'] },
+    { kana: 'THEY’RE EVERYWHERE!', romaji: '', alts: ['they are everywhere'] },
+    { kana: 'WE’RE NOT SAFE HERE!', romaji: '', alts: ['we are not safe here'] },
+    { kana: 'IS IT DEAD?!', romaji: '', alts: [] },
+    { kana: 'IT’S NOT HIM ANYMORE!', romaji: '', alts: ['it is not him anymore', 'that is not him anymore', 'that’s not him anymore'] },
+    { kana: 'I GOT BIT!', romaji: '', alts: ['i got bitten', 'i’ve been bitten'] },
+    { kana: 'IT’S JUST A SCRATCH!', romaji: '', alts: ['it is just a scratch', 'just a scratch'] },
+    { kana: 'DON’T LET THEM BITE YOU!', romaji: '', alts: ['do not let them bite you'] }
   ]
 };
-const YABAI_ITEM = KANA_BANKS.YABAI_EXCLAMATIONS[0];
 
 let currentKanaMode = 'H_BASIC';
+
+function isEnglishMode() { return currentKanaMode === 'YABAI_EN'; }
+function isYabaiMode() { return currentKanaMode === 'YABAI' || currentKanaMode === 'YABAI_EN'; }
+function yabaiBank() { return isEnglishMode() ? KANA_BANKS.YABAI_EN : KANA_BANKS.YABAI_EXCLAMATIONS; }
+function yabaiItem() { return yabaiBank()[0]; }
 
 function setKanaMode(mode) {
   currentKanaMode = mode;
   const buttons = {
     H_BASIC: 'btn-mode-h-basic', H_WORDS: 'btn-mode-h-words', K_BASIC: 'btn-mode-k-basic',
-    K_WORDS: 'btn-mode-k-words', MIXED: 'btn-mode-mixed', YABAI: 'btn-mode-yabai'
+    K_WORDS: 'btn-mode-k-words', MIXED: 'btn-mode-mixed', YABAI: 'btn-mode-yabai', YABAI_EN: 'btn-mode-yabai-en'
   };
   Object.keys(buttons).forEach(m => {
     const btn = $(buttons[m]);
     const active = m === mode;
-    if (m === 'YABAI') {
+    if (m === 'YABAI' || m === 'YABAI_EN') {
       btn.className = active
         ? 'py-2 px-1 rounded border border-yellow-300 bg-yellow-500 text-black font-bold transition-all shadow-lg'
         : 'py-2 px-1 rounded border border-yellow-700 bg-yellow-950 text-yellow-300 transition-all opacity-80';
@@ -137,4 +175,6 @@ function setKanaMode(mode) {
     }
     btn.setAttribute('aria-pressed', active);
   });
+  if (recognition) $('stt-support-badge').textContent = isEnglishMode() ? 'en-US' : 'ja-JP';
+  updateEngineNote();
 }

@@ -31,6 +31,7 @@ function levenshtein(a, b) {
   return prev[b.length];
 }
 const HAS_KANJI = /[\u3400-\u9fff]/;
+const HAS_JA = /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/;
 
 function buildCandidate(text) {
   return {

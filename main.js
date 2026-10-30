@@ -1,5 +1,5 @@
 // Shown small under Start, so a stale cached copy can be spotted.
-const APP_VERSION = 'v1.0';
+const APP_VERSION = 'v2.0';
 $('app-version').textContent = APP_VERSION;
 
 // --- EVENTS ---

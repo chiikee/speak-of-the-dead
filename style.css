@@ -40,7 +40,8 @@ input { user-select: text; -webkit-user-select: text; }
   content: "";
   position: fixed;
   inset: 0;
-  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.4) 50%),
+  /* Light enough not to cut through the zombie labels */
+  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.15) 50%),
               linear-gradient(90deg, rgba(255,0,0,0.03), rgba(0,255,0,0.01), rgba(0,0,255,0.03));
   background-size: 100% 4px, 6px 100%;
   z-index: 20;

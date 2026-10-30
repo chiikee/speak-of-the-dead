@@ -29,8 +29,8 @@ Browser zombie shooter for practising Japanese kana. Zombies walk toward the pla
 - Difficulty in `DIFFICULTY_SETTINGS` (speed, spawn interval, `minOnScreen`); ramps every 4 kills.
 
 ## Speech engines
-- `browser` (default): Web Speech API, `ja-JP`, continuous + interim. Best accuracy; Chrome/Edge/Safari only, needs internet.
-- `local`: Vosk via `vosk-browser@0.0.8` from jsDelivr; model loaded from `model.tar.gz` next to the page. Optional grammar mode limits it to the current mode's words.
+- `browser` (default): Web Speech API, `ja-JP` (`en-US` in English YABAI mode), continuous + interim. Best accuracy; Chrome/Edge/Safari only, needs internet.
+- `local`: Vosk via `vosk-browser@0.0.8` from jsDelivr; model loaded from `model.tar.gz` next to the page. Optional grammar mode limits it to the current mode's words. Japanese only, so English YABAI mode is keyboard-only with Vosk.
 - Auto: no Speech API, or Brave (`navigator.brave`) → Vosk. A `network`/`service-not-allowed` error mid-game → `fallbackToBuiltIn()`.
 
 ## Hard-won rules (don't undo)
@@ -51,11 +51,12 @@ Tailwind's CDN was replaced by precompiled utilities in `utilities.css` (CDN war
 
 ## Versions
 Every root version gets an annotated git tag (`v1`, `v2`, …). Versions worth playing side by side also get a frozen copy in `old/vN/`.
-`APP_VERSION` at the top of `main.js` is shown small under Start, so players on a stale cached copy can be spotted. Bump the minor (`v1.0` → `v1.1`) on each push that changes the root game; `next/` shows `vN-next`.
+`APP_VERSION` at the top of `main.js` is shown small beside the GitHub icon, so players on a stale cached copy can be spotted. Bump the minor (`v1.0` → `v1.1`) on each push that changes the root game; `next/` shows `vN-next`.
 When promoting `next/` to the root:
 1. Tag the current root: `git tag -a vN -m "..."` and `git push origin vN`.
 2. If wanted, copy the root's index.html, CSS and JS into `old/vN/`. In its `speech.js` set `VOSK_MODEL_URL = '../../model.tar.gz'` (one shared model), and prefix its `<title>` with `[vN]`.
-3. Copy `next/` over the root and set the root's `VOSK_MODEL_URL` back to `'model.tar.gz'`.
+3. Copy `next/` over the root and set the root's `VOSK_MODEL_URL` back to `'model.tar.gz'`. Set the root's `APP_VERSION` to `v(N+1).0` and `next/`'s to `v(N+2)-next`.
+Root is v2 (promoted 2026-10-31); `v1` is tagged and playable in `old/v1/`.
 
 ## Testing
 - `npx serve` in the repo, open the "On Your Network" address. Phones need https for the mic.
@@ -63,4 +64,3 @@ When promoting `next/` to the root:
 
 ## Next tasks
 1. Optional: a critical-hit alternative where the shout meter is off.
-2. English variant of YABAI mode (`YABAI_EXCLAMATIONS` / YABAI Rush) for non-Japanese speakers.
