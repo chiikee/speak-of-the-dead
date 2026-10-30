@@ -223,6 +223,7 @@ svg,canvas{display:block;vertical-align:middle}
 .hover\:bg-red-600:hover{background-color:#dc2626}
 .hover\:bg-red-700:hover{background-color:#b91c1c}
 .hover\:bg-zinc-700:hover{background-color:#3f3f46}
+.hover\:bg-zinc-800:hover{background-color:#27272a}
 .hover\:text-white:hover{color:#ffffff}
 .focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}
 .focus\:ring-2:focus{--tw-ring-shadow:0 0 0 2px var(--tw-ring-color,rgb(59 130 246 / .5));box-shadow:var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}
@@ -237,6 +238,7 @@ svg,canvas{display:block;vertical-align:middle}
   .sm\:inline{display:inline}
   .sm\:items-center{align-items:center}
   .sm\:justify-end{justify-content:flex-end}
+  .sm\:mb-0\.5{margin-bottom:0.125rem}
   .sm\:order-2{order:2}
   .sm\:order-3{order:3}
   .sm\:p-2\.5{padding:0.625rem}
@@ -245,6 +247,7 @@ svg,canvas{display:block;vertical-align:middle}
   .sm\:p-5{padding:1.25rem}
   .sm\:p-6{padding:1.5rem}
   .sm\:p-8{padding:2rem}
+  .sm\:px-5{padding-left:1.25rem;padding-right:1.25rem}
   .sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}
   .sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}
   .sm\:text-5xl{font-size:3rem;line-height:1}
@@ -261,12 +264,8 @@ svg,canvas{display:block;vertical-align:middle}
   .sm\:w-auto{width:auto}
 }
 @media (min-width:768px){
-  .md\:flex-1{flex:1 1 0%}
-  .md\:flex-row{flex-direction:row}
   .md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
   .md\:inline-block{display:inline-block}
-  .md\:items-center{align-items:center}
   .md\:max-w-3xl{max-width:48rem}
   .md\:text-4xl{font-size:2.25rem;line-height:2.5rem}
-  .md\:w-56{width:14rem}
 }

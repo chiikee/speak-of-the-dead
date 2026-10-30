@@ -38,7 +38,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && isGameRunning && !isPaused) togglePause('user');
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !isGameRunning) return;
+  if (e.key !== 'Escape') return;
+  if (!$('settings-modal').classList.contains('hidden')) return toggleSettings();
+  if (!isGameRunning) return;
   if (!$('cheatsheet-modal').classList.contains('hidden')) toggleCheatSheet();
   else togglePause('user');
 });
