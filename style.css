@@ -1,0 +1,72 @@
+/* The game is intentionally dark in both light and dark viewer modes */
+:root {
+  --bg: #08070c;
+  --fg: #e0e0e0;
+  color-scheme: dark;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #08070c; --fg: #e0e0e0; }
+}
+:root[data-theme="dark"] { --bg: #08070c; --fg: #e0e0e0; }
+
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Share Tech Mono', 'Kosugi Maru', ui-monospace, Menlo, monospace;
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+input { user-select: text; -webkit-user-select: text; }
+
+.font-arcade { font-family: 'Press Start 2P', ui-monospace, monospace; }
+.font-horror { font-family: 'Creepster', Impact, 'Arial Black', fantasy; }
+.font-jp { font-family: 'Kosugi Maru', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif; }
+
+.crt::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.4) 50%),
+              linear-gradient(90deg, rgba(255,0,0,0.03), rgba(0,255,0,0.01), rgba(0,0,255,0.03));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 20;
+  pointer-events: none;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 3px; }
+
+.neon-text-red { text-shadow: 0 0 5px #ef4444, 0 0 15px #dc2626, 0 0 30px #991b1b; }
+.neon-box-red { box-shadow: 0 0 10px rgba(220,38,38,0.5), inset 0 0 10px rgba(220,38,38,0.3); }
+
+button:focus-visible, input:focus-visible { outline: 2px solid #facc15; outline-offset: 2px; }
+
+.btn-mode-active { background-color: #7f1d1d !important; border-color: #ef4444 !important; color: #ffffff !important; transform: scale(1.02); }
+.btn-mode-inactive { background-color: #27272a; border-color: #52525b; color: #a1a1aa; opacity: 0.8; }
+.btn-diff-active { background-color: #7f1d1d !important; border-color: #ef4444 !important; color: #ffffff !important; transform: scale(1.02); }
+.btn-diff-inactive { background-color: #27272a; border-color: #52525b; color: #a1a1aa; opacity: 0.8; }
+
+.input-miss { animation: miss 0.3s; border-color: #f43f5e !important; }
+@keyframes miss {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse, .animate-ping { animation: none !important; }
+}
