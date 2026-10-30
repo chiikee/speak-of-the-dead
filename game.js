@@ -413,6 +413,11 @@ function toggleCheatSheet() {
   }
 }
 
+// Only reachable from the main menu, so no pausing needed
+function toggleSettings() {
+  $('settings-modal').classList.toggle('hidden');
+}
+
 // --- SHOOTING ---
 function tryShoot(texts, fromVoice) {
   if (!isGameRunning || isPaused || zombies.length === 0) return false;

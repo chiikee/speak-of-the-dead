@@ -8,8 +8,6 @@ function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    $('stt-support-badge').textContent = 'NO STT';
-    $('stt-support-badge').className = 'shrink-0 px-2 py-0.5 rounded text-[9px] font-arcade bg-red-950 text-red-400 border border-red-700';
     $('mic-status-text').textContent = 'This browser has no speech service, so the built-in engine is selected.';
     setEngine('local');
     return;
@@ -131,6 +129,12 @@ function setEngine(engine) {
 }
 
 function updateEngineNote() {
+  // The engine panel lives in Settings, so the main menu badge says which engine is active
+  const badge = $('stt-support-badge');
+  const local = speechEngine === 'local';
+  badge.textContent = local ? 'VOSK' : isEnglishMode() ? 'en-US' : 'ja-JP';
+  badge.className = 'shrink-0 px-2 py-0.5 rounded text-[9px] font-arcade border ' +
+    (local ? 'bg-purple-950 text-purple-200 border-purple-700' : 'bg-green-950 text-green-400 border-green-700');
   const note = $('engine-note');
   if (speechEngine === 'browser') {
     note.textContent = (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -286,7 +290,7 @@ function shootFromFinalText(text, st) {
 }
 
 // --- VOSK (vosk-browser 0.0.8, Apache-2.0) ---
-// Put model.tar.gz next to this page (see setup notes).
+// Shares the root folder's model.tar.gz, so there's only one copy.
 const VOSK_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/vosk-browser@0.0.8/dist/vosk.js';
 const VOSK_MODEL_URL = 'model.tar.gz';
 const LOCAL_MODEL_SIZE = 'about 50 MB';

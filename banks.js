@@ -175,6 +175,5 @@ function setKanaMode(mode) {
     }
     btn.setAttribute('aria-pressed', active);
   });
-  if (recognition) $('stt-support-badge').textContent = isEnglishMode() ? 'en-US' : 'ja-JP';
   updateEngineNote();
 }
