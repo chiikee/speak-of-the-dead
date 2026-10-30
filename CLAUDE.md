@@ -15,6 +15,7 @@ Browser zombie shooter for practising Japanese kana. Zombies walk toward the pla
   Top-level code may only use things from files loaded earlier (e.g. `KANA_BANKS` calls `kataToHira`); function bodies can use anything.
 - `model.tar.gz`: Vosk Japanese model (vosk-model-small-ja-0.22, folder renamed `model`, ~50 MB). Pushed with plain git, NOT Git LFS (Pages can't serve LFS files).
 - `next/`: in-progress copy of the page (index.html, CSS, JS) for trying changes without touching the root page. Loads the model from `../model.tar.gz`; otherwise the same as the root page for now.
+- `old/vN/`: frozen, playable copies of earlier root pages (see Versions). Don't edit them.
 - `stt-test.html`: standalone page for testing the browser's speech recognition on phones.
 - `build-css.py`: generates the CSS utilities (see CSS).
 
@@ -47,6 +48,14 @@ Tailwind's CDN was replaced by precompiled utilities in `utilities.css` (CDN war
 - UI text uses typographic punctuation (’ “ ”); code keeps straight quotes.
 - Romaji shows long vowels doubled (raamen, koohii); matching ignores the difference.
 - Keep the dark arcade look and the existing fonts.
+
+## Versions
+Every root version gets an annotated git tag (`v1`, `v2`, …). Versions worth playing side by side also get a frozen copy in `old/vN/`.
+`APP_VERSION` at the top of `main.js` is shown small under Start, so players on a stale cached copy can be spotted. Bump the minor (`v1.0` → `v1.1`) on each push that changes the root game; `next/` shows `vN-next`.
+When promoting `next/` to the root:
+1. Tag the current root: `git tag -a vN -m "..."` and `git push origin vN`.
+2. If wanted, copy the root's index.html, CSS and JS into `old/vN/`. In its `speech.js` set `VOSK_MODEL_URL = '../../model.tar.gz'` (one shared model), and prefix its `<title>` with `[vN]`.
+3. Copy `next/` over the root and set the root's `VOSK_MODEL_URL` back to `'model.tar.gz'`.
 
 ## Testing
 - `npx serve` in the repo, open the "On Your Network" address. Phones need https for the mic.
