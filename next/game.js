@@ -232,20 +232,43 @@ class Zombie {
     ctx.arc(h * 0.1, -h * 0.6 - reach, h * 0.05, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
     ctx.restore();
+  }
 
-    // Name tag above the head, kept fully on screen
-    const kanaFs = Math.max(13, Math.floor(34 * scale * u));
-    const roFs = Math.max(10, Math.floor(20 * scale * u));
+  // Name tag size and natural spot above the head. The words are what the player reads, so they
+  // only grow a little as the zombie closes in instead of shrinking into the distance.
+  labelBox() {
+    const p = project(this.z, this.xn);
+    const scale = p.scale;
+    const h = this.size(scale);
+    const u = unit();
+    const grow = 0.6 + 0.4 * Math.min(1, scale);
+    const kanaFs = Math.round(Math.max(18, 34 * grow * u));
+    const roFs = Math.round(Math.max(15, 22 * grow * u));
     ctx.font = `bold ${kanaFs}px "Kosugi Maru", "Hiragino Sans", sans-serif`;
     const kanaW = ctx.measureText(this.kana).width;
     ctx.font = `bold ${roFs}px "Share Tech Mono", monospace`;
     const roW = ctx.measureText(this.romaji).width;
-    const pad = Math.max(6, 10 * scale * u);
+    const pad = Math.max(6, 10 * grow * u);
     const tw = Math.max(kanaW, roW) + pad * 2;
     const th = kanaFs + roFs + pad * 1.2;
     const tx = clamp(p.x, tw / 2 + 4, W - tw / 2 - 4);
-    const headTop = p.y + bob - h * 0.96;
+    const headTop = p.y - h * 0.96; // ignores the walking bob so the text holds still
     const ty = Math.max(th / 2 + 10, headTop - th / 2 - 6);
+    return { zombie: this, kanaFs, roFs, pad, tw, th, tx, ty, headX: p.x, headTop };
+  }
+
+  drawLabel(box) {
+    const { kanaFs, roFs, pad, tw, th, tx, ty } = box;
+
+    // Pushed away from its zombie: a thin line shows which head it belongs to
+    if (ty + th / 2 < box.headTop - 12) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty + th / 2);
+      ctx.lineTo(box.headX, box.headTop);
+      ctx.stroke();
+    }
 
     const slowed = targetSlowdownTimer > 0;
     ctx.fillStyle = slowed ? 'rgba(8,145,178,0.9)' : 'rgba(0,0,0,0.85)';
@@ -586,6 +609,35 @@ function updateGameLogic(dt) {
 }
 
 
+// Nearest zombie keeps its label spot; farther labels move up (or down if there's no room) until
+// nothing overlaps. Returns the boxes far-to-near so the nearest label is drawn on top.
+function layoutLabels(boxes) {
+  const gap = 4;
+  const placed = [];
+  const overlap = (a, b) => Math.abs(a.tx - b.tx) * 2 < a.tw + b.tw + gap * 2 &&
+    Math.abs(a.ty - b.ty) * 2 < a.th + b.th + gap * 2;
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i];
+    const natural = box.ty;
+    for (let tries = 0; tries < boxes.length; tries++) {
+      const hit = placed.find((o) => overlap(box, o));
+      if (!hit) break;
+      box.ty = hit.ty - (hit.th + box.th) / 2 - gap;
+    }
+    if (box.ty < box.th / 2 + 4) {
+      // Off the top: stack below the colliding labels instead
+      box.ty = natural;
+      for (let tries = 0; tries < boxes.length; tries++) {
+        const hit = placed.find((o) => overlap(box, o));
+        if (!hit) break;
+        box.ty = hit.ty + (hit.th + box.th) / 2 + gap;
+      }
+    }
+    placed.push(box);
+  }
+  return boxes;
+}
+
 // --- RENDER ---
 function render() {
   const horizonY = H * 0.35;
@@ -645,6 +697,7 @@ function render() {
     ctx.translate((Math.random() - 0.5) * screenShakeTimer * 0.8, (Math.random() - 0.5) * screenShakeTimer * 0.8);
   }
   zombies.forEach((z) => z.draw());
+  layoutLabels(zombies.map((z) => z.labelBox())).forEach((b) => b.zombie.drawLabel(b));
   particleEffects.forEach((p) => p.draw());
   mangaTexts.forEach((m) => m.draw());
   floatingTexts.forEach((f) => f.draw());
