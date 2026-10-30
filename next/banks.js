@@ -114,41 +114,39 @@ const KANA_BANKS = {
     { kana: 'もうだめだ', romaji: 'mou dame da', alts: ['もう駄目だ'] },                                 // "it's hopeless!"
     { kana: 'ヤバいヤバいヤバい', romaji: 'yabai yabai yabai', alts: [] }
   ],
-  // YABAI mode for non-Japanese speakers: say the English, the Japanese original is shown under it.
+  // YABAI mode for non-Japanese speakers: English lines straight out of zombie movies, no translation.
   // First entry is the rush zombie, like ヤバい above.
   YABAI_EN: [
-    { kana: 'OH NO!', romaji: 'ヤバい', alts: ['oh no no'] },
-    { kana: 'HELP!', romaji: 'たすけて', alts: ['help me'] },
-    { kana: 'RUN!', romaji: 'にげろ', alts: ['run away'] },
-    { kana: 'WHAT?!', romaji: 'なに', alts: [] },
-    { kana: 'NO WAY!', romaji: 'うそ', alts: [] },
-    { kana: 'SERIOUSLY?!', romaji: 'まじで', alts: [] },
-    { kana: 'STAY BACK!', romaji: 'くるな', alts: [] },
-    { kana: 'STOP!', romaji: 'やめて', alts: [] },
-    { kana: 'WAIT!', romaji: 'まって', alts: [] },
-    { kana: 'MONSTER!', romaji: 'ばけもの', alts: [] },
-    { kana: 'SCARY!', romaji: 'こわい', alts: [] },
-    // Seeing them
-    { kana: 'IT’S A ZOMBIE!', romaji: 'ゾンビだ', alts: ['it is a zombie'] },
-    { kana: 'IT MOVED!', romaji: 'うごいた', alts: [] },
-    { kana: 'IT’S ALIVE!', romaji: 'いきてる', alts: ['it is alive'] },
-    { kana: 'HERE THEY COME!', romaji: 'くるぞ', alts: [] },
-    { kana: 'GROSS!', romaji: 'きもい', alts: [] },
-    { kana: 'IT STINKS!', romaji: 'くさい', alts: [] },
-    // Panicking
-    { kana: 'THIS IS BAD!', romaji: 'まずい', alts: [] },
-    { kana: 'NO NO NO!', romaji: 'いやだ', alts: [] },
-    { kana: 'YOU’RE KIDDING!', romaji: 'まじかよ', alts: ['you are kidding', 'your kidding'] },
-    { kana: 'SOMEBODY!', romaji: 'だれか', alts: ['someone'] },
-    { kana: 'HURRY!', romaji: 'はやく', alts: ['hurry up'] },
-    { kana: 'HIDE!', romaji: 'かくれろ', alts: [] },
-    { kana: 'I GOT BITTEN!', romaji: 'かまれた', alts: ['i got bit', 'i’ve been bitten'] },
-    { kana: 'I’M GONNA DIE!', romaji: 'しぬ', alts: ['i am gonna die', 'i’m going to die'] },
-    { kana: 'WE’RE DONE FOR!', romaji: 'おわった', alts: ['we are done for'] },
-    // Fighting back
-    { kana: 'FIGHT!', romaji: 'たたかえ', alts: [] },
-    { kana: 'DAMN IT!', romaji: 'ちくしょう', alts: ['dammit', 'damnit'] },
-    { kana: 'ARE YOU OKAY?!', romaji: 'だいじょうぶ', alts: ['are you ok', 'are you alright'] }
+    { kana: 'ZOMBIES!', romaji: '', alts: ['zombie', 'zombi'] },
+    { kana: 'OH NO!', romaji: '', alts: ['oh no no', 'ono', 'oh now'] },
+    { kana: 'RUN!', romaji: '', alts: ['run run'] },
+    { kana: 'HELP!', romaji: '', alts: ['help me'] },
+    { kana: 'THEY’RE COMING!', romaji: '', alts: ['they are coming', 'their coming'] },
+    { kana: 'BEHIND YOU!', romaji: '', alts: [] },
+    { kana: 'LOOK OUT!', romaji: '', alts: [] },
+    { kana: 'AIM FOR THE HEAD!', romaji: '', alts: ['go for the head'] },
+    { kana: 'SHOOT IT!', romaji: '', alts: ['shoot'] },
+    { kana: 'HEADSHOT!', romaji: '', alts: ['head shot'] },
+    { kana: 'DOUBLE TAP!', romaji: '', alts: [] },
+    { kana: 'RELOAD!', romaji: '', alts: ['reloading'] },
+    { kana: 'I’M OUT OF AMMO!', romaji: '', alts: ['i am out of ammo', 'out of ammo'] },
+    { kana: 'LOCK THE DOOR!', romaji: '', alts: ['lock the doors'] },
+    { kana: 'GET TO THE CAR!', romaji: '', alts: [] },
+    { kana: 'GET TO THE ROOF!', romaji: '', alts: [] },
+    { kana: 'DON’T GO IN THERE!', romaji: '', alts: ['do not go in there'] },
+    { kana: 'LET’S SPLIT UP!', romaji: '', alts: ['lets split up', 'split up'] },
+    { kana: 'STAY QUIET!', romaji: '', alts: [] },
+    { kana: 'KEEP MOVING!', romaji: '', alts: [] },
+    { kana: 'GO GO GO!', romaji: '', alts: [] },
+    { kana: 'WE HAVE TO GO!', romaji: '', alts: ['we got to go', 'we gotta go'] },
+    { kana: 'THERE’S TOO MANY!', romaji: '', alts: ['there are too many', 'there is too many', 'too many'] },
+    { kana: 'THEY’RE EVERYWHERE!', romaji: '', alts: ['they are everywhere'] },
+    { kana: 'WE’RE NOT SAFE HERE!', romaji: '', alts: ['we are not safe here'] },
+    { kana: 'IS IT DEAD?!', romaji: '', alts: [] },
+    { kana: 'IT’S NOT HIM ANYMORE!', romaji: '', alts: ['it is not him anymore', 'that is not him anymore', 'that’s not him anymore'] },
+    { kana: 'I GOT BIT!', romaji: '', alts: ['i got bitten', 'i’ve been bitten'] },
+    { kana: 'IT’S JUST A SCRATCH!', romaji: '', alts: ['it is just a scratch', 'just a scratch'] },
+    { kana: 'DON’T LET THEM BITE YOU!', romaji: '', alts: ['do not let them bite you'] }
   ]
 };
 

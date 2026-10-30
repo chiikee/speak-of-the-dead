@@ -113,7 +113,7 @@ class Zombie {
     this.roSet = new Set();
     // English words (YABAI_EN) also go in jaSet, so the streaming matcher fires once per repeat
     const english = !HAS_JA.test(data.kana);
-    const r0 = english ? '' : normRomaji(data.romaji); // there the small line is the Japanese
+    const r0 = normRomaji(data.romaji);
     if (r0) this.roSet.add(r0);
     for (const f of [data.kana, ...(data.alts || [])]) {
       if (!HAS_JA.test(f)) {
@@ -248,7 +248,7 @@ class Zombie {
     const u = unit();
     const grow = 0.6 + 0.4 * Math.min(1, scale);
     const kanaFs = Math.round(Math.max(24, 42 * grow * u));
-    const roFs = Math.round(Math.max(16, 24 * grow * u));
+    const roFs = this.romaji ? Math.round(Math.max(16, 24 * grow * u)) : 0; // English lines have no second row
     ctx.font = `bold ${kanaFs}px "Kosugi Maru", "Hiragino Sans", sans-serif`;
     const kanaW = ctx.measureText(this.kana).width;
     ctx.font = `bold ${roFs}px "Share Tech Mono", monospace`;
