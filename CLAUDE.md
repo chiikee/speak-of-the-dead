@@ -14,6 +14,7 @@ Browser zombie shooter for practising Japanese kana. Zombies walk toward the pla
   - `main.js`: event wiring and startup; must stay last.
   Top-level code may only use things from files loaded earlier (e.g. `KANA_BANKS` calls `kataToHira`); function bodies can use anything.
 - `model.tar.gz`: Vosk Japanese model (vosk-model-small-ja-0.22, folder renamed `model`, ~50 MB). Pushed with plain git, NOT Git LFS (Pages can't serve LFS files).
+- `next/`: in-progress copy of the page (index.html, CSS, JS) for trying changes without touching the root page. Loads the model from `../model.tar.gz`; otherwise the same as the root page for now.
 - `stt-test.html`: standalone page for testing the browser's speech recognition on phones.
 - `build-css.py`: generates the CSS utilities (see CSS).
 
@@ -37,7 +38,7 @@ Browser zombie shooter for practising Japanese kana. Zombies walk toward the pla
 - Start browser recognition directly inside the Start click; don't await anything first.
 - Mic only works on https or localhost. Test phones via GitHub Pages or a tunnel.
 - Whisper, Moonshine (Transformers.js) and ReazonSpeech (sherpa-onnx; HF Space files return 401) were tried and dropped. Don't re-add without a new reason.
-- iPhone/iPad likely have the same mic conflict as Android but it's unconfirmed. iPad Safari reports itself as a Mac (detect via `navigator.maxTouchPoints > 1`).
+- iPhone and iPad do NOT have the Android mic conflict: friends played the shared-mic version with continuous mode on iPhones with no problems, and iPad was tested directly (both 2026-10-30). So iOS/iPadOS keep the shout meter; the rule stays Android-only. (iPad Safari reports itself as a Mac; detect via `navigator.maxTouchPoints > 1` if ever needed.)
 
 ## CSS
 Tailwind's CDN was replaced by precompiled utilities in `utilities.css` (CDN warned it isn't for production). Only classes already used have CSS. After adding new Tailwind classes, run `python3 build-css.py index.html *.js > u.css && mv u.css utilities.css`; it exits with an error listing any class it can't map.
@@ -52,5 +53,4 @@ Tailwind's CDN was replaced by precompiled utilities in `utilities.css` (CDN war
 - `node --check <file>.js` for syntax.
 
 ## Next tasks
-1. Confirm the iPhone/iPad mic conflict with `stt-test.html`; if confirmed, apply the Android rule to iOS/iPadOS.
-2. Optional: a critical-hit alternative where the shout meter is off.
+1. Optional: a critical-hit alternative where the shout meter is off.
