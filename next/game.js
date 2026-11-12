@@ -95,6 +95,7 @@ let zombies = [], particleEffects = [], floatingTexts = [], mangaTexts = [];
 let spawnTimer = 0, spawnInterval = 320, waveDifficulty = 1;
 let targetSlowdownTimer = 0, screenShakeTimer = 0;
 let nextBossAt = 8, nextRushAt = 10;
+let foodCooldown = 0;
 let isYabaiRushActive = false;
 let loopToken = 0, lastTime = 0;
 
@@ -273,8 +274,8 @@ class Zombie {
   drawLabel(box) {
     const { kanaFs, roFs, pad, tw, th, tx, ty } = box;
     const slowed = targetSlowdownTimer > 0;
-    ctx.fillStyle = slowed ? 'rgba(8,145,178,0.9)' : 'rgba(0,0,0,0.85)';
-    ctx.strokeStyle = this.isBoss ? '#facc15' : (slowed ? '#38bdf8' : '#dc2626');
+    ctx.fillStyle = this.isFood ? 'rgba(5,46,22,0.9)' : (slowed ? 'rgba(8,145,178,0.9)' : 'rgba(0,0,0,0.85)');
+    ctx.strokeStyle = this.isFood ? '#4ade80' : (this.isBoss ? '#facc15' : (slowed ? '#38bdf8' : '#dc2626'));
     ctx.lineWidth = this.isBoss ? 2.5 : 1.5;
     ctx.beginPath();
     ctx.roundRect(tx - tw / 2, ty - th / 2, tw, th, 6);
@@ -284,7 +285,7 @@ class Zombie {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = `bold ${kanaFs}px "Kosugi Maru", "Hiragino Sans", sans-serif`;
-    ctx.fillStyle = this.isBoss ? '#fef08a' : '#ffffff';
+    ctx.fillStyle = this.isBoss ? '#fef08a' : (this.isFood ? '#bbf7d0' : '#ffffff');
     ctx.fillText(this.kana, tx, ty - th / 2 + pad * 0.6 + kanaFs / 2);
     ctx.font = `bold ${roFs}px "Share Tech Mono", monospace`;
     ctx.fillStyle = '#facc15';
@@ -298,6 +299,64 @@ class Zombie {
       ctx.fillStyle = '#facc15';
       ctx.fillRect(bx, by, bw * (this.hp / this.maxHp), bh);
     }
+  }
+}
+
+// Healing food: floats in like a zombie and goes into the same list, so every matcher (voice, typing, fuzzy, Vosk)
+// can target it. Saying its phrase eats it instead of shooting; if it reaches you it's gone, no damage.
+const FOOD_ICONS = ['🍙', '🍜', '🍣', '🍱', '🍡', '🍛', '🥟', '🍢'];
+const FOOD_HEAL = 30;
+const FOOD_LOW_HP = 40;      // food only shows up at or below this much health
+const FOOD_COOLDOWN = 600;   // frames at 60fps between one food leaving and the next arriving
+
+class Food extends Zombie {
+  constructor(data) {
+    super(data, false);
+    this.isFood = true;
+    this.icon = FOOD_ICONS[Math.floor(Math.random() * FOOD_ICONS.length)];
+    this.xn = randomLane(0.7);
+    // Steady pace (no wave ramp) so there's always time to say it
+    this.speed = 0.8 * DIFFICULTY_SETTINGS[currentDifficulty].baseSpeed * Z_SPEED;
+  }
+
+  size(scale) { return scale * bodyBase() * 0.45; }
+
+  // The icon sits just above the name tag and never gets too small to see
+  iconPos() {
+    const p = project(this.z, this.xn);
+    const fs = Math.max(30 * unit(), this.size(p.scale) * 0.8);
+    const box = this.labelBox();
+    return { p, fs, x: box.tx, y: box.ty - box.th / 2 - fs * 0.65 };
+  }
+
+  headPos() { const { x, y } = this.iconPos(); return { x, y }; }
+
+  draw() {
+    const { p, fs, x, y } = this.iconPos();
+    const h = this.size(p.scale);
+    const cy = y - Math.sin(this.limbAngle) * fs * 0.06; // bobs gently
+
+    ctx.save();
+    ctx.globalAlpha = clamp(0.25 + p.scale * 2.2, 0, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, h * 0.35, h * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.shadowColor = '#4ade80';
+    ctx.shadowBlur = fs * 0.5;
+    ctx.fillStyle = 'rgba(74,222,128,0.3)';
+    ctx.beginPath();
+    ctx.arc(x, cy, fs * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(fs)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+    ctx.fillText(this.icon, x, cy);
+    ctx.restore();
   }
 }
 
@@ -480,6 +539,7 @@ function shootNextInStream(ja, st, isFinal, fromVoice) {
 
 function executeShot(zombie, fromVoice) {
   wordsSpokenCount++;
+  if (zombie.isFood) { eatFood(zombie); return; }
 
   const isCritical = fromVoice && micPeak >= SHOUT_THRESHOLD;
   if (isCritical) { criticalShoutsCount++; micPeak = 0; }
@@ -519,6 +579,19 @@ function executeShot(zombie, fromVoice) {
   } else {
     floatingTexts.push(new FloatingText('HIT!', x, y, '#38bdf8'));
   }
+}
+
+function eatFood(food) {
+  zombies = zombies.filter((z) => z !== food);
+  foodCooldown = FOOD_COOLDOWN;
+  const healed = Math.min(FOOD_HEAL, 100 - playerHp);
+  playerHp += healed;
+  soundEngine.playHeal();
+  const { x, y } = food.headPos();
+  createBloodSplat(x, y, '#4ade80');
+  mangaTexts.push(new MangaActionText(isEnglishMode() ? 'NOM NOM!' : 'もぐもぐ!', x, y - 30, false));
+  floatingTexts.push(new FloatingText(`+${healed} HP`, x, y, '#4ade80'));
+  updateHUD();
 }
 
 function triggerYabaiRush() {
@@ -582,16 +655,29 @@ function updateGameLogic(dt) {
   const cfg = DIFFICULTY_SETTINGS[currentDifficulty];
   spawnTimer += dt;
   // Never leave the field empty: top up straight away when below the minimum
-  const tooFew = zombies.length < cfg.minOnScreen;
+  const tooFew = zombies.filter((z) => !z.isFood).length < cfg.minOnScreen;
   if (spawnTimer >= spawnInterval || (tooFew && spawnTimer >= 20)) {
     spawnTimer = 0;
     spawnInterval = Math.max(cfg.minInterval, cfg.spawnInterval - (waveDifficulty - 1) * 10);
     spawnZombie();
   }
 
+  if (!zombies.some((z) => z.isFood)) foodCooldown = Math.max(0, foodCooldown - dt);
+  if (playerHp <= FOOD_LOW_HP && foodCooldown <= 0 && !zombies.some((z) => z.isFood)) {
+    const bank = foodBank();
+    zombies.push(new Food(bank[Math.floor(Math.random() * bank.length)]));
+    foodCooldown = FOOD_COOLDOWN;
+    floatingTexts.push(new FloatingText('FOOD! SAY IT TO HEAL', W / 2, H * 0.3, '#4ade80'));
+  }
+
   for (let i = zombies.length - 1; i >= 0; i--) {
     const z = zombies[i];
     z.update(dt);
+    if (z.z <= 0 && z.isFood) {
+      zombies.splice(i, 1);
+      floatingTexts.push(new FloatingText('FOOD MISSED', W / 2, H * 0.3, '#9ca3af'));
+      continue;
+    }
     if (z.z <= 0) {
       playerHp -= z.isBoss ? 35 : 15;
       combo = 1;
@@ -736,6 +822,7 @@ function startGame() {
   wordsSpokenCount = 0; criticalShoutsCount = 0; maxCombo = 1;
   waveDifficulty = 1; targetSlowdownTimer = 0; screenShakeTimer = 0;
   nextBossAt = 8; nextRushAt = 10;
+  foodCooldown = 0;
   spawnTimer = 0;
   spawnInterval = DIFFICULTY_SETTINGS[currentDifficulty].spawnInterval;
   zombies = []; particleEffects = []; floatingTexts = []; mangaTexts = [];

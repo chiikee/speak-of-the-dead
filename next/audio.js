@@ -48,6 +48,7 @@ class WebAudioSoundEngine {
   playZombieGroan() { this.tone('sawtooth', 60 + Math.random() * 30, 45 + Math.random() * 20, 0.15, 0.4, 0, true); }
   playZombieDeath() { this.tone('square', 180, 40, 0.3, 0.25); }
   playDamage() { this.tone('sawtooth', 120, 30, 0.5, 0.3, 0, true); }
+  playHeal() { for (let i = 0; i < 4; i++) this.tone('sine', 523 * Math.pow(1.26, i), 523 * Math.pow(1.26, i), 0.15, 0.15, i * 0.07); }
   playBossAlert() { for (let i = 0; i < 3; i++) this.tone('sine', 440 + i * 110, 440 + i * 110, 0.2, 0.08, i * 0.1); }
 }
 const soundEngine = new WebAudioSoundEngine();

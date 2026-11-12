@@ -114,6 +114,22 @@ const KANA_BANKS = {
     { kana: 'もうだめだ', romaji: 'mou dame da', alts: ['もう駄目だ'] },                                 // "it's hopeless!"
     { kana: 'ヤバいヤバいヤバい', romaji: 'yabai yabai yabai', alts: [] }
   ],
+  // Healing food: shows up when you're low on health; say the phrase to eat it
+  FOOD_PHRASES: [
+    { kana: 'いただきます', romaji: 'itadakimasu', alts: ['頂きます'] },                                // said before eating
+    { kana: 'ごちそうさま', romaji: 'gochisousama', alts: ['ご馳走様', 'ごちそう様', 'ご馳走さま'] },     // said after eating
+    { kana: 'おいしい', romaji: 'oishii', alts: ['美味しい'] },                                         // "delicious"
+    { kana: 'うまい', romaji: 'umai', alts: ['旨い', '美味い', 'うまっ'] },                                // "tasty"
+    { kana: 'おなかすいた', romaji: 'onaka suita', alts: ['お腹すいた', 'お腹空いた', 'おなか空いた'] }, // "I'm hungry"
+    { kana: 'たべたい', romaji: 'tabetai', alts: ['食べたい'] }                                          // "I want to eat"
+  ],
+  FOOD_EN: [
+    { kana: 'YUM!', romaji: '', alts: ['yummy', 'yum yum'] },
+    { kana: 'DELICIOUS!', romaji: '', alts: [] },
+    { kana: 'SNACK TIME!', romaji: '', alts: ['snack'] },
+    { kana: 'I’M STARVING!', romaji: '', alts: ['i am starving', 'starving'] },
+    { kana: 'LET’S EAT!', romaji: '', alts: ['lets eat', 'let us eat'] }
+  ],
   // YABAI mode for non-Japanese speakers: English lines straight out of zombie movies, no translation.
   // First entry is the rush zombie, like ヤバい above.
   YABAI_EN: [
@@ -156,6 +172,7 @@ function isEnglishMode() { return currentKanaMode === 'YABAI_EN'; }
 function isYabaiMode() { return currentKanaMode === 'YABAI' || currentKanaMode === 'YABAI_EN'; }
 function yabaiBank() { return isEnglishMode() ? KANA_BANKS.YABAI_EN : KANA_BANKS.YABAI_EXCLAMATIONS; }
 function yabaiItem() { return yabaiBank()[0]; }
+function foodBank() { return isEnglishMode() ? KANA_BANKS.FOOD_EN : KANA_BANKS.FOOD_PHRASES; }
 
 function setKanaMode(mode) {
   currentKanaMode = mode;

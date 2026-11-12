@@ -374,6 +374,7 @@ function buildVoskGrammar() {
     default: items = [].concat(KANA_BANKS.H_BASIC, KANA_BANKS.H_WORDS, KANA_BANKS.K_BASIC, KANA_BANKS.K_WORDS);
   }
   if (!isYabaiMode()) items = items.concat(KANA_BANKS.BOSS_PHRASES);
+  items = items.concat(KANA_BANKS.FOOD_PHRASES);
   const words = new Set();
   for (const it of items) {
     for (const f of [it.kana, ...(it.alts || [])]) {
