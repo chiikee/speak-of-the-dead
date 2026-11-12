@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mic Check · Speak of the Dead</title>
+  <style>
+    :root {
+      --bg: #0b0a10; --panel: #17161d; --panel2: #201f28; --text: #ececf1; --muted: #9ca3af; --border: #34333d;
+      --accent: #ef4444; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --code: #000;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    }
+    main { max-width: 560px; margin: 0 auto; display: grid; gap: 14px; }
+    header h1 { font-size: 1.5rem; margin: 4px 0 2px; }
+    header h1 span { color: var(--accent); }
+    header p { margin: 0; color: var(--muted); }
+    .step { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .step.locked { opacity: 0.45; }
+    .step-head { display: flex; align-items: center; gap: 10px; }
+    .num {
+      flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--panel2); border: 1px solid var(--border); font-weight: 700; font-size: 0.95rem;
+    }
+    .step h2 { font-size: 1.1rem; margin: 0; flex: 1; }
+    .badge { font-size: 0.8rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--panel2); color: var(--muted); white-space: nowrap; }
+    .badge.pass { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
+    .badge.fail { background: rgba(248, 113, 113, 0.15); color: var(--bad); }
+    .badge.warn { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+    .badge.run { background: rgba(239, 68, 68, 0.15); color: var(--accent); }
+    .step p { margin: 10px 0 0; }
+    .say { font-size: 1.6rem; font-weight: 800; margin: 10px 0 0; text-align: center; }
+    .say small { display: block; font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+    button {
+      font: inherit; font-weight: 700; width: 100%; margin-top: 14px; padding: 14px; border-radius: 10px;
+      border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+    button:disabled { opacity: 0.4; cursor: default; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row button { margin-top: 14px; }
+    .checks { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+    .checks li { display: flex; gap: 8px; }
+    .checks li::before { flex: none; width: 1.2em; font-weight: 700; }
+    .checks li.pass::before { content: "✓"; color: var(--ok); }
+    .checks li.fail::before { content: "✗"; color: var(--bad); }
+    .checks li.warn::before { content: "!"; color: var(--warn); text-align: center; }
+    .meter { height: 18px; border-radius: 9px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; margin-top: 12px; }
+    .meter > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ok), var(--warn), var(--accent)); transition: width 60ms linear; }
+    .heard {
+      margin-top: 12px; min-height: 2.6em; padding: 10px 12px; border-radius: 10px; background: var(--panel2);
+      font-size: 1.3rem; font-weight: 700; word-break: break-word;
+    }
+    .heard:empty::before { content: attr(data-placeholder); color: var(--muted); font-size: 1rem; font-weight: 400; }
+    .result { margin-top: 12px; }
+    .result:empty { display: none; }
+    .msg { padding: 12px; border-radius: 10px; border: 1px solid; }
+    .msg.pass { border-color: rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.08); }
+    .msg.fail { border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.08); }
+    .msg.warn { border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.08); }
+    .msg strong { display: block; margin-bottom: 4px; }
+    .msg ol, .msg ul { margin: 6px 0 0; padding-left: 1.3em; }
+    .msg li { margin-top: 4px; }
+    .path { font-weight: 600; color: #fff; }
+    .lang { display: flex; gap: 8px; margin-top: 12px; }
+    .lang button { margin: 0; padding: 8px; font-weight: 600; background: transparent; color: var(--muted); border-color: var(--border); }
+    .lang button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); background: rgba(239, 68, 68, 0.12); }
+    textarea {
+      width: 100%; margin-top: 12px; min-height: 180px; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--code); color: #a7f3d0; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vertical;
+    }
+    details { color: var(--muted); font-size: 0.9rem; }
+    details summary { cursor: pointer; padding: 4px 0; }
+    #log { background: var(--code); color: #a7f3d0; border-radius: 10px; padding: 10px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 40vh; overflow-y: auto; margin: 8px 0 0; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🎤 Mic check <span>·</span> Speak of the Dead</h1>
+    <p>About one minute. Do the steps in order and read what each one says. At the end you get a report to send back.</p>
+  </header>
+
+  <!-- Step 1 -->
+  <section class="step" id="s1">
+    <div class="step-head"><div class="num">1</div><h2>Your browser</h2><span class="badge" id="b1">checking…</span></div>
+    <ul class="checks" id="checks1"></ul>
+    <div class="result" id="r1"></div>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="step locked" id="s2">
+    <div class="step-head"><div class="num">2</div><h2>Microphone</h2><span class="badge" id="b2">waiting</span></div>
+    <p>Tap the button. If your phone asks to use the microphone, tap <b>Allow</b>. Then say anything out loud and watch the bar.</p>
+    <div class="meter"><div id="meter2"></div></div>
+    <button id="go2" disabled>Turn on the mic</button>
+    <div class="result" id="r2"></div>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="step locked" id="s3">
+    <div class="step-head"><div class="num">3</div><h2>Speech to text</h2><span class="badge" id="b3">waiting</span></div>
+    <p>Tap the button, then say this clearly:</p>
+    <div class="say" id="say3">こんにちは<small>“konnichiwa”</small></div>
+    <div class="lang" role="group" aria-label="Language">
+      <button id="lang-ja" aria-pressed="true">Japanese</button>
+      <button id="lang-en" aria-pressed="false">English</button>
+    </div>
+    <div class="heard" id="heard3" data-placeholder="What your phone hears shows up here"></div>
+    <button id="go3" disabled>Start listening</button>
+    <div class="result" id="r3"></div>
+  </section>
+
+  <!-- Step 4 -->
+  <section class="step locked" id="s4">
+    <div class="step-head"><div class="num">4</div><h2>Game mode</h2><span class="badge" id="b4">waiting</span></div>
+    <p>The game listens to your words <em>and</em> measures how loud you shout, both at once. Some phones can’t do both. Tap the button and count:</p>
+    <div class="say">いち、に、さん<small>“ichi, ni, san”</small></div>
+    <div class="meter"><div id="meter4"></div></div>
+    <div class="heard" id="heard4" data-placeholder="What your phone hears shows up here"></div>
+    <button id="go4" disabled>Start game-mode test</button>
+    <div class="result" id="r4"></div>
+  </section>
+
+  <!-- Step 5 -->
+  <section class="step locked" id="s5">
+    <div class="step-head"><div class="num">5</div><h2>Send the report</h2><span class="badge" id="b5">waiting</span></div>
+    <p>Send this to the friend who shared the game, even if everything passed.</p>
+    <div class="row">
+      <button id="share">Share report</button>
+      <button id="copy" class="secondary">Copy report</button>
+    </div>
+    <textarea id="report" readonly></textarea>
+  </section>
+
+  <details>
+    <summary>Technical log</summary>
+    <pre id="log"></pre>
+  </details>
+</main>
+
+<script>
+  'use strict';
+  const PAGE_VERSION = 'mic-check 1';
+  const $ = (id) => document.getElementById(id);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const UA = navigator.userAgent;
+  const IS_IOS = /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+  const IS_ANDROID = /Android/.test(UA);
+  const IOS_VER = (() => { const m = UA.match(/OS (\d+)[_.](\d+)/); return IS_IOS && m ? [+m[1], +m[2]] : null; })();
+  const IN_APP = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Discord|Snapchat|MicroMessenger|GSA\/|TikTok|musical_ly|Twitter/i.test(UA);
+  const IOS_OTHER_BROWSER = IS_IOS && /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|Brave/i.test(UA);
+
+  const t0 = performance.now();
+  const logLines = [];
+  function log(msg) {
+    const line = `${((performance.now() - t0) / 1000).toFixed(2)}s  ${msg}`;
+    logLines.push(line);
+    $('log').textContent = logLines.join('\n');
+    $('log').scrollTop = $('log').scrollHeight;
+  }
+
+  // Per-step outcome for the report.
+  const results = { 1: 'not run', 2: 'not run', 3: 'not run', 4: 'not run' };
+
+  function badge(n, cls, text) { const b = $('b' + n); b.className = 'badge ' + (cls || ''); b.textContent = text; }
+  function unlock(n) { $('s' + n).classList.remove('locked'); const g = $('go' + n); if (g) g.disabled = false; }
+  function showMsg(n, cls, title, items, intro) {
+    const list = items && items.length ? `<ol>${items.map((i) => `<li>${i}</li>`).join('')}</ol>` : '';
+    $('r' + n).innerHTML = `<div class="msg ${cls}"><strong>${title}</strong>${intro ? `<div>${intro}</div>` : ''}${list}</div>`;
+  }
+  const P = (s) => `<span class="path">${s}</span>`;
+  const browserName = IS_IOS ? (IOS_OTHER_BROWSER ? 'your browser' : 'Safari') : 'your browser';
+
+  // ---- Fix lists for each speech error, iPhone first ----
+  function fixesFor(err) {
+    const reload = 'Then reload this page and start again.';
+    if (err === 'not-allowed' || err === 'NotAllowedError' || err === 'SecurityError') {
+      return IS_IOS ? [
+        `In Safari, tap ${P('aA')} (left of the address bar) → ${P('Website Settings')} → ${P('Microphone')} → ${P('Allow')}.`,
+        `Open ${P('Settings → Apps → Safari → Microphone')} and pick ${P('Ask')} or ${P('Allow')}.`,
+        `Open ${P('Settings → Privacy & Security → Microphone')} and ${P('Speech Recognition')}. If ${browserName} is listed, turn it on.`,
+        `If you use Screen Time: ${P('Settings → Screen Time → Content & Privacy Restrictions')}, check that ${P('Microphone')} and ${P('Speech Recognition')} are set to Allow.`,
+        reload,
+      ] : [
+        'Tap the lock or settings icon next to the address and allow the microphone for this site.',
+        'Check your phone settings allow this browser to use the microphone.',
+        reload,
+      ];
+    }
+    if (err === 'service-not-allowed') {
+      return IS_IOS ? [
+        `Turn on dictation: ${P('Settings → General → Keyboard → Enable Dictation')}. iPhone speech-to-text in websites uses dictation (Siri), so it fails when dictation is off.`,
+        `If you use Screen Time: ${P('Settings → Screen Time → Content & Privacy Restrictions → Allowed Apps & Features')} and make sure ${P('Siri & Dictation')} is on.`,
+        `Also check ${P('Settings → Privacy & Security → Speech Recognition')} if ${browserName} is listed there.`,
+        reload,
+      ] : [
+        'Your browser blocked speech recognition. Try Chrome; in Brave or Firefox it doesn’t work.',
+      ];
+    }
+    if (err === 'network') {
+      return [
+        'Speech recognition on phones sends your voice to Apple or Google, so it needs internet. Check that Wi‑Fi or mobile data works.',
+        'Turn off any VPN, ad-blocker or “private relay” style app for a moment and try again.',
+      ];
+    }
+    if (err === 'audio-capture' || err === 'NotReadableError' || err === 'AbortError') {
+      return [
+        'Another app may be using the microphone: a phone or FaceTime call, voice memo, screen recording with sound, or another browser tab. Close it and try again.',
+        'If Bluetooth earbuds or a headset are connected, disconnect them and try with the phone’s own mic.',
+        IS_IOS ? 'If that doesn’t help, close Safari completely (swipe it away) and reopen this page.' : 'If that doesn’t help, close the browser completely and reopen this page.',
+      ];
+    }
+    if (err === 'NotFoundError') {
+      return ['The phone says it has no microphone. Disconnect Bluetooth devices and restart the phone.'];
+    }
+    if (err === 'language-not-supported') {
+      return IS_IOS ? [
+        `Add a Japanese keyboard: ${P('Settings → General → Keyboard → Keyboards → Add New Keyboard → Japanese')} (Romaji or Kana).`,
+        'Then try again. You can also test with English using the switch above.',
+      ] : ['Try English with the switch above, and send the report.'];
+    }
+    if (err === 'no-speech' || err === 'silent') {
+      const tips = [
+        'Hold the phone closer and speak a bit louder, right after tapping the button.',
+        'Make sure a case or your hand isn’t covering the microphone (the bottom edge of the phone).',
+        'Disconnect Bluetooth earbuds so the phone’s own mic is used.',
+      ];
+      if (IS_IOS && lang === 'ja-JP') tips.push(`If English works but Japanese doesn’t, add a Japanese keyboard: ${P('Settings → General → Keyboard → Keyboards → Add New Keyboard → Japanese')}, then try again.`);
+      return tips;
+    }
+    return ['Try again once. If it fails the same way, send the report.'];
+  }
+
+  // ---- Step 1: browser checks (automatic) ----
+  function step1() {
+    const items = [];
+    let worst = 'pass';
+    const add = (cls, text) => { items.push(`<li class="${cls}">${text}</li>`); if (cls === 'fail' || (cls === 'warn' && worst === 'pass')) worst = cls; };
+    const notes = [];
+
+    if (IS_IOS) add('pass', `iPhone/iPad${IOS_VER ? ', iOS ' + IOS_VER.join('.') : ''}`);
+    else if (IS_ANDROID) add('pass', 'Android phone');
+    else add('pass', 'Computer');
+
+    if (IN_APP) {
+      add('fail', 'You opened this inside another app (LINE, Instagram, Discord…). The mic often doesn’t work there.');
+      notes.push(IS_IOS ? `Tap ${P('⋯')} or the share icon and choose ${P('Open in Safari')}. Then do this check again in Safari.` : `Tap ${P('⋮')} and choose ${P('Open in Chrome')} (or your browser). Then do this check again.`);
+    } else if (IOS_OTHER_BROWSER) {
+      add('warn', 'You’re not in Safari. It might work, but if a step fails, open this page in Safari and try again.');
+    }
+
+    if (!window.isSecureContext) {
+      add('fail', 'This page isn’t opened over https, so the mic is blocked.');
+      notes.push('Open the link that starts with https://');
+    } else add('pass', 'Secure page (https)');
+
+    const gum = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    if (gum) add('pass', 'Microphone access is supported');
+    else add('fail', 'This browser can’t use the microphone');
+
+    if (SR) add('pass', 'Speech-to-text is supported');
+    else {
+      add('fail', 'This browser has no speech-to-text');
+      if (IOS_VER && (IOS_VER[0] < 14 || (IOS_VER[0] === 14 && IOS_VER[1] < 5))) notes.push(`Update iOS (${P('Settings → General → Software Update')}). Speech-to-text in Safari needs iOS 14.5 or newer.`);
+      else if (IS_IOS) notes.push('Open this page in Safari.');
+      else notes.push('Use Chrome, Edge or Safari. Brave and Firefox don’t have speech-to-text (the game can still use its built-in offline engine, which is slower).');
+    }
+
+    $('checks1').innerHTML = items.join('');
+    log(`env: ios=${IS_IOS} ${IOS_VER ? IOS_VER.join('.') : ''} android=${IS_ANDROID} inApp=${IN_APP} otherIOSBrowser=${IOS_OTHER_BROWSER} secure=${window.isSecureContext} gum=${gum} SR=${SR ? (window.SpeechRecognition ? 'SpeechRecognition' : 'webkitSpeechRecognition') : 'none'}`);
+
+    if (worst === 'fail') {
+      badge(1, 'fail', 'problem');
+      showMsg(1, 'fail', 'Fix this first', notes);
+      results[1] = 'FAIL: ' + $('checks1').innerText.replace(/\n+/g, ' | ');
+      if (gum && window.isSecureContext) unlock(2); // still let them test the mic
+    } else {
+      badge(1, worst === 'warn' ? 'warn' : 'pass', worst === 'warn' ? 'ok-ish' : 'passed');
+      results[1] = worst === 'warn' ? 'WARN: not Safari' : 'pass';
+      unlock(2);
+    }
+  }
+
+  // ---- Mic level helper (shared by steps 2 and 4) ----
+  async function openMeter(barId) {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') { try { await ac.resume(); } catch (e) {} }
+    const an = ac.createAnalyser();
+    an.fftSize = 1024;
+    ac.createMediaStreamSource(stream).connect(an);
+    const data = new Uint8Array(an.fftSize);
+    const m = { stream, ac, peak: 0, loudFrames: 0, raf: 0, closed: false };
+    const tick = () => {
+      if (m.closed) return;
+      an.getByteTimeDomainData(data);
+      let p = 0;
+      for (let i = 0; i < data.length; i++) p = Math.max(p, Math.abs(data[i] - 128) / 128);
+      m.peak = Math.max(m.peak, p);
+      if (p > 0.12) m.loudFrames++;
+      $(barId).style.width = Math.min(100, Math.round(p * 140)) + '%';
+      m.raf = requestAnimationFrame(tick);
+    };
+    tick();
+    log(`mic stream open: "${(stream.getAudioTracks()[0] || {}).label || '?'}" ctx=${ac.state} rate=${ac.sampleRate}`);
+    return m;
+  }
+  function closeMeter(m, barId) {
+    if (!m || m.closed) return;
+    m.closed = true;
+    cancelAnimationFrame(m.raf);
+    m.stream.getTracks().forEach((t) => t.stop());
+    try { m.ac.close(); } catch (e) {}
+    $(barId).style.width = '0%';
+    log(`mic stream closed (peak ${m.peak.toFixed(2)})`);
+  }
+
+  // ---- Step 2: microphone ----
+  $('go2').addEventListener('click', async () => {
+    $('go2').disabled = true;
+    $('r2').innerHTML = '';
+    badge(2, 'run', 'listening');
+    $('go2').textContent = 'Say something…';
+    let m;
+    try {
+      m = await openMeter('meter2');
+    } catch (e) {
+      log(`getUserMedia failed: ${e.name} ${e.message}`);
+      badge(2, 'fail', 'blocked');
+      showMsg(2, 'fail', e.name === 'NotAllowedError' ? 'The microphone is blocked' : `The mic didn’t start (${e.name})`, fixesFor(e.name));
+      results[2] = `FAIL: ${e.name} ${e.message}`;
+      $('go2').textContent = 'Try again';
+      $('go2').disabled = false;
+      if (SR) unlock(3);
+      unlock(5); buildReport();
+      return;
+    }
+    const start = performance.now();
+    const done = await new Promise((resolve) => {
+      const check = () => {
+        if (m.loudFrames > 20) return resolve(true);           // ~⅓ s of clear sound
+        if (performance.now() - start > 8000) return resolve(false);
+        setTimeout(check, 100);
+      };
+      check();
+    });
+    const peak = m.peak;
+    closeMeter(m, 'meter2');
+    $('go2').textContent = 'Test again';
+    $('go2').disabled = false;
+    if (done) {
+      badge(2, 'pass', 'passed');
+      showMsg(2, 'pass', 'Your microphone works ✓');
+      results[2] = `pass (peak ${peak.toFixed(2)})`;
+    } else {
+      badge(2, 'warn', 'too quiet');
+      showMsg(2, 'warn', peak < 0.01 ? 'The mic is on but hears total silence' : 'The mic hears you, but very quietly', fixesFor('silent'), 'You can still carry on to step 3.');
+      results[2] = `WARN: quiet (peak ${peak.toFixed(2)})`;
+    }
+    if (SR) unlock(3); else { unlock(5); buildReport(); }
+  });
+
+  // ---- Speech recognition run (steps 3 and 4) ----
+  let lang = 'ja-JP';
+  function setLang(l) {
+    lang = l;
+    $('lang-ja').setAttribute('aria-pressed', l === 'ja-JP');
+    $('lang-en').setAttribute('aria-pressed', l === 'en-US');
+    $('say3').innerHTML = l === 'ja-JP' ? 'こんにちは<small>“konnichiwa”</small>' : 'hello zombie<small>(in English)</small>';
+  }
+  $('lang-ja').addEventListener('click', () => setLang('ja-JP'));
+  $('lang-en').addEventListener('click', () => setLang('en-US'));
+
+  // Must be called synchronously from the tap (no await before it).
+  function listen({ lang, continuous, heardId, timeoutMs, tag }) {
+    return new Promise((resolve) => {
+      const out = { error: null, finalText: '', anyText: '', events: [], startThrew: null };
+      let r;
+      try { r = new SR(); } catch (e) { out.startThrew = e.name + ' ' + e.message; resolve(out); return; }
+      r.lang = lang; r.continuous = continuous; r.interimResults = true; r.maxAlternatives = 1;
+      const ev = (name) => { out.events.push(name); log(`${tag}: ${name}`); };
+      r.onstart = () => ev('start'); r.onaudiostart = () => ev('audiostart'); r.onsoundstart = () => ev('soundstart');
+      r.onspeechstart = () => ev('speechstart'); r.onspeechend = () => ev('speechend'); r.onaudioend = () => ev('audioend');
+      r.onnomatch = () => ev('nomatch');
+      r.onerror = (e) => { out.error = out.error || e.error; ev(`ERROR ${e.error}${e.message ? ' (' + e.message + ')' : ''}`); };
+      r.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const res = e.results[i];
+          const t = res[0].transcript;
+          log(`${tag}: result ${res.isFinal ? 'FINAL' : 'interim'} “${t}”${res[0].confidence ? ' ' + res[0].confidence.toFixed(2) : ''}`);
+          if (res.isFinal) out.finalText += t + ' '; else interim += t;
+        }
+        out.anyText = (out.finalText + interim).trim();
+        $(heardId).textContent = out.anyText;
+        // Stop early once we have a final result in one-shot mode, or enough words in game mode.
+        if (!continuous && out.finalText.trim()) { try { r.stop(); } catch (_) {} }
+        if (continuous && out.finalText.trim().length >= 4) { try { r.stop(); } catch (_) {} }
+      };
+      const timer = setTimeout(() => { log(`${tag}: timeout, stopping`); try { r.stop(); } catch (_) {} }, timeoutMs);
+      r.onend = () => { clearTimeout(timer); ev('end'); out.finalText = out.finalText.trim(); resolve(out); };
+      try { r.start(); log(`${tag}: start() lang=${lang} continuous=${continuous}`); }
+      catch (e) { clearTimeout(timer); out.startThrew = e.name + ' ' + e.message; log(`${tag}: start() threw ${out.startThrew}`); resolve(out); }
+    });
+  }
+
+  function speechVerdict(n, out, okTitle) {
+    if (out.startThrew) {
+      badge(n, 'fail', 'failed');
+      showMsg(n, 'fail', 'Speech-to-text wouldn’t start', fixesFor('other'), out.startThrew);
+      return `FAIL: start threw ${out.startThrew}`;
+    }
+    if (out.anyText) {
+      badge(n, 'pass', 'passed');
+      showMsg(n, 'pass', okTitle, null, `It heard: “${out.anyText}”`);
+      return `pass: “${out.anyText}” (error=${out.error || 'none'})`;
+    }
+    const err = out.error || (out.events.includes('speechstart') ? 'nomatch' : 'no-speech');
+    const titles = {
+      'not-allowed': 'Speech-to-text is blocked',
+      'service-not-allowed': IS_IOS ? 'Dictation is turned off or blocked on this phone' : 'Speech-to-text is blocked by the browser',
+      'network': 'No connection to the speech service',
+      'audio-capture': 'Couldn’t get the microphone',
+      'no-speech': 'It didn’t hear you speak',
+      'nomatch': 'It heard you, but couldn’t make out words',
+      'language-not-supported': 'This language isn’t available on this phone',
+      'aborted': 'Listening was interrupted',
+    };
+    badge(n, 'fail', 'failed');
+    showMsg(n, 'fail', titles[err] || `It failed (${err})`, fixesFor(err === 'nomatch' ? 'no-speech' : err));
+    return `FAIL: ${err} (events: ${out.events.join(',')})`;
+  }
+
+  // ---- Step 3: speech to text ----
+  $('go3').addEventListener('click', async () => {
+    $('go3').disabled = true; $('lang-ja').disabled = true; $('lang-en').disabled = true;
+    $('r3').innerHTML = ''; $('heard3').textContent = '';
+    badge(3, 'run', 'listening');
+    $('go3').textContent = 'Listening… speak now';
+    const out = await listen({ lang, continuous: false, heardId: 'heard3', timeoutMs: 10000, tag: 'step3' });
+    results[3] = `[${lang}] ` + speechVerdict(3, out, 'Speech-to-text works ✓');
+    $('go3').textContent = 'Test again'; $('go3').disabled = false; $('lang-ja').disabled = false; $('lang-en').disabled = false;
+    unlock(4);
+    buildReport();
+  });
+
+  // ---- Step 4: game mode (recognition + volume meter at once, like the game) ----
+  $('go4').addEventListener('click', async () => {
+    $('go4').disabled = true;
+    $('r4').innerHTML = ''; $('heard4').textContent = '';
+    badge(4, 'run', 'listening');
+    $('go4').textContent = 'Listening… count now';
+    // Same order as the game: recognition first (directly in the tap), then the meter.
+    const p = listen({ lang: 'ja-JP', continuous: true, heardId: 'heard4', timeoutMs: 12000, tag: 'step4' });
+    let m = null, meterErr = null;
+    try { m = await openMeter('meter4'); } catch (e) { meterErr = `${e.name} ${e.message}`; log(`step4: meter failed ${meterErr}`); }
+    const out = await p;
+    const peak = m ? m.peak : 0;
+    closeMeter(m, 'meter4');
+    if (out.anyText) {
+      results[4] = speechVerdict(4, out, 'Game mode works ✓') + ` meter=${m ? 'peak ' + peak.toFixed(2) : 'FAILED ' + meterErr}`;
+      if (!m) showMsg(4, 'warn', 'Words work, but the shout meter couldn’t start', ['The game is still playable; you just won’t get shout critical hits. Send the report.']);
+    } else if (results[3].includes('pass')) {
+      // Step 3 worked alone, this didn't: the mic-sharing problem.
+      badge(4, 'fail', 'failed');
+      showMsg(4, 'fail', 'Your phone can’t share the mic',
+        ['Speech-to-text works on its own (step 3) but stops working when the game also measures your volume.', 'This isn’t something you can fix in settings. Send the report: the game can turn the shout meter off for your phone.'],
+        `Phone said: ${out.error || 'nothing'}.`);
+      results[4] = `FAIL (mic sharing conflict): ${out.error || 'no result'} events=${out.events.join(',')} meter=${m ? 'peak ' + peak.toFixed(2) : 'FAILED ' + meterErr}`;
+    } else {
+      results[4] = speechVerdict(4, out, 'Game mode works ✓') + ` meter=${m ? 'peak ' + peak.toFixed(2) : 'FAILED ' + meterErr}`;
+    }
+    $('go4').textContent = 'Test again'; $('go4').disabled = false;
+    unlock(5);
+    buildReport();
+  });
+
+  // ---- Step 5: report ----
+  function buildReport() {
+    const lines = [
+      `Speak of the Dead mic check (${PAGE_VERSION})`,
+      new Date().toString(),
+      '',
+      `1 Browser:     ${results[1]}`,
+      `2 Microphone:  ${results[2]}`,
+      `3 Speech:      ${results[3]}`,
+      `4 Game mode:   ${results[4]}`,
+      '',
+      UA,
+      '',
+      '--- log ---',
+      ...logLines.slice(-80),
+    ];
+    $('report').value = lines.join('\n');
+    const anyFail = Object.values(results).some((r) => r.startsWith('FAIL'));
+    badge(5, anyFail ? 'warn' : 'pass', 'ready');
+  }
+  $('share').addEventListener('click', async () => {
+    buildReport();
+    const text = $('report').value;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Mic check report', text }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+    copyReport();
+  });
+  async function copyReport() {
+    buildReport();
+    const btn = $('copy');
+    try { await navigator.clipboard.writeText($('report').value); btn.textContent = 'Copied ✓'; }
+    catch (e) { $('report').select(); btn.textContent = 'Select & copy'; }
+    setTimeout(() => { btn.textContent = 'Copy report'; }, 2000);
+  }
+  $('copy').addEventListener('click', copyReport);
+  if (!navigator.share) $('share').style.display = 'none', $('share').parentElement.style.gridTemplateColumns = '1fr';
+
+  step1();
+  buildReport();
+</script>
+</body>
+</html>

@@ -16,7 +16,8 @@ Browser zombie shooter for practising Japanese kana. Zombies walk toward the pla
 - `model.tar.gz`: Vosk Japanese model (vosk-model-small-ja-0.22, folder renamed `model`, ~50 MB). Pushed with plain git, NOT Git LFS (Pages can't serve LFS files).
 - `next/`: in-progress copy of the page (index.html, CSS, JS) for trying changes without touching the root page. Loads the model from `../model.tar.gz`; otherwise the same as the root page for now.
 - `old/vN/`: frozen, playable copies of earlier root pages (see Versions). Don't edit them.
-- `stt-test.html`: standalone page for testing the browser's speech recognition on phones.
+- `stt-test.html`: standalone page for testing the browser's speech recognition on phones (developer tool, raw event log).
+- `mic-check.html`: player-friendly guided version (browser → mic → speech → game mode with shared mic → shareable report), with iPhone-specific fixes for each error.
 - `build-css.py`: generates the CSS utilities (see CSS).
 
 ## How it works
@@ -26,6 +27,7 @@ Browser zombie shooter for practising Japanese kana. Zombies walk toward the pla
 - `shootNextInStream` walks a transcript and fires once per occurrence, so "やばいやばいやばい" = 3 shots. Single kana wait if the text could still become a longer on-screen word.
 - Built-in engines also get `fuzzyRomajiShot` (near misses, 1 slip per 4 letters; never for single kana).
 - Critical shout: mic peak ≥ 0.65 within ~1 s of a voice hit = double damage, +500.
+- Healing food (`next/` only so far): at ≤ 40 HP a `Food` (subclass of `Zombie`, `isFood`) floats in carrying a phrase from `FOOD_PHRASES`/`FOOD_EN`. It lives in `zombies`, so every matcher works on it; `executeShot` diverts it to `eatFood` (+30 HP). If it reaches the player it just disappears. 10 s cooldown between foods; food doesn't count toward `minOnScreen`.
 - Difficulty in `DIFFICULTY_SETTINGS` (speed, spawn interval, `minOnScreen`); ramps every 4 kills.
 
 ## Speech engines
